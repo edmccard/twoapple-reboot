@@ -20,6 +20,8 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
+module d6502.nmosundoc;
+
 import d6502.base;
 import d6502.nmosbase;
 
@@ -41,7 +43,7 @@ class NmosUndoc : NmosBase
     {
         version(Commodore64)
         {
-            ubyte hiAddr = ((primaryAddress >> 8) + 1);
+            ubyte hiAddr = cast(ubyte)((primaryAddress >> 8) + 1);
             val = val & hiAddr;
             ushort addr = (badAddress == primaryAddress) ? primaryAddress :
                 ((val << 8) | (primaryAddress & 0xFF));
@@ -49,7 +51,7 @@ class NmosUndoc : NmosBase
         }
         else
         {
-            ubyte hiAddr = ((baseAddress >> 8) + 1);
+            ubyte hiAddr = cast(ubyte)((baseAddress >> 8) + 1);
             writeFinal(primaryAddress, val & hiAddr);
         }
     }
@@ -62,7 +64,7 @@ class NmosUndoc : NmosBase
         {
             int opcode = opcodes[op];
             modes ~= "[\"" ~ hexByte(opcode) ~ "\", \"";
-            switch ((opcode & 0b00011100) >> 2)
+            final switch ((opcode & 0b00011100) >> 2)
             {
                 case 0:
                     modes ~= "IndirectX()";
@@ -221,7 +223,7 @@ class NmosUndoc : NmosBase
         readVal = operand1 = readFinal(programCounter);
         ubyte val = readVal & accumulator;
         if (flag.decimal) {
-            ubyte temp = (val >> 1) + (flag.carry ? 0x80 : 0);
+            ubyte temp = cast(ubyte)((val >> 1) + (flag.carry ? 0x80 : 0));
             flag.zero_ = flag.negative_ = temp;
             flag.overflow = (((temp ^ val) & 0x40) != 0);
             if ((readVal & 0x0F) + (val & 0x01) > 5)
@@ -236,7 +238,7 @@ class NmosUndoc : NmosBase
             accumulator = temp;
         }
         else {
-            accumulator = (val >> 1) + (flag.carry ? 0x80 : 0);
+            accumulator = cast(ubyte)((val >> 1) + (flag.carry ? 0x80 : 0));
             flag.zero_ = flag.negative_ = accumulator;
             val >>= 7;
             flag.carry = (val != 0);

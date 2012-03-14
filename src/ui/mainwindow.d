@@ -136,7 +136,7 @@ class TwoappleMainWindow : MainWindow
             input.startTextInput(checkFile.fileName);
     }
 
-    int windowDelete(Event event, Widget widget)
+    bool windowDelete(Event event, Widget widget)
     {
         stayOpen = false;
         soundCard.pause();
@@ -202,7 +202,7 @@ class TwoappleMainWindow : MainWindow
                     {
                         speedString = std.string.sformat(speedString,
                                 "% 5d%%", cast(int)(speedPercent * 100));
-                        speedLabel.setText(speedString);
+                        speedLabel.setText(speedString.idup);
                     }
                 }
                 runOnce = false;
@@ -217,7 +217,7 @@ class TwoappleMainWindow : MainWindow
                     host.delay.nap();
             }
         }
-        while (stayOpen)
+        while (stayOpen);
     }
 }
 
@@ -228,7 +228,7 @@ class TwoappleFile
     import std.path;
 
     string fileName;
-    char* fileNameZ;
+    immutable(char)* fileNameZ;
 
     this(string fname)
     {
@@ -271,7 +271,7 @@ class TwoappleFile
 
     uint fileSize()
     {
-        return getSize(fileName);
+        return cast(uint)getSize(fileName);
     }
 }
 
@@ -313,15 +313,14 @@ class TwoappleFilePicker
         scope fcd = new FileChooserDialog("Save " ~ type, appWindow,
                 FileChooserAction.SAVE);
 
-        scope chooser = fcd.getFileChooser();
-        chooser.setCurrentFolder(folder);
-        chooser.setCurrentName(name);
+        fcd.setCurrentFolder(folder);
+        fcd.setCurrentName(name);
 
         TwoappleFile file;
         while (true)
         {
             if (fcd.run() != ResponseType.GTK_RESPONSE_OK) break;
-            file = new TwoappleFile(chooser.getFilename());
+            file = new TwoappleFile(fcd.getFilename());
             if (file.exists())
             {
                 if (!file.canWrite())
@@ -356,16 +355,15 @@ class TwoappleFilePicker
 
         scope fcd = new FileChooserDialog("Open " ~ type, appWindow,
                 FileChooserAction.OPEN);
-        scope chooser = fcd.getFileChooser();
 
         if (type in lastFolder)
-            chooser.setCurrentFolder(lastFolder[type]);
+            fcd.setCurrentFolder(lastFolder[type]);
 
         TwoappleFile file;
         while(true)
         {
             if (fcd.run() != ResponseType.GTK_RESPONSE_OK) break;
-            file = new TwoappleFile(chooser.getFilename());
+            file = new TwoappleFile(fcd.getFilename());
             if (!file.canRead())
             {
                 TwoappleError.show(fcd, "File cannot be read");

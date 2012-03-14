@@ -23,13 +23,14 @@
 module ui.inputevents;
 
 import std.stdio;
+import std.conv;
 
 import gtkglc.glgdktypes;
 import gtk.Widget;
 import gtkc.gtktypes;
 import gtk.Image;
 import gtk.ToggleToolButton;
-import gtk.GtkD;
+import gtk.Main;
 import gtk.Timeout;
 
 import derelict.sdl.sdl;
@@ -48,7 +49,7 @@ static this()
     {
         if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) == -1)
         {
-            writefln("%s", std.string.toString(SDL_GetError()));
+            writefln("%s", to!string(SDL_GetError()));
             return;
         }
 
@@ -64,11 +65,10 @@ static this()
             device = SDL_JoystickOpen(i);
             if (device is null)
             {
-                writefln("%s", std.string.toString(SDL_GetError()));
+                writefln("%s", to!string(SDL_GetError()));
                 continue;
             }
-            writefln("Joystick %s: %s", i,
-                    std.string.toString(SDL_JoystickName(i)));
+            writefln("Joystick %s: %s", i, to!string(SDL_JoystickName(i)));
 
             joysticks[i] = new Joystick(device,
                     SDL_JoystickNumAxes(device),
@@ -135,7 +135,7 @@ class Input
 
             // XXX hackish way of setting "pause" button
             if (joysticks[i].pbForButton.length > 2)
-                joysticks[i].pbForButton[length - 1] = -2;
+                joysticks[i].pbForButton[$ - 1] = -2;
         }
     }
 
@@ -154,7 +154,7 @@ class Input
         paddles = pdl;
     }
 
-    gboolean onKeyPress(GdkEventKey* evt, Widget w)
+    bool onKeyPress(GdkEventKey* evt, Widget w)
     {
         static const int KEY_PAUSE  = 65299;    // Pause/Break
         static const int KEY_ESCAPE = 65307;
@@ -185,7 +185,7 @@ class Input
         return kbd.handlePress(evt.keyval, ctrl, evt.hardwareKeycode);
     }
 
-    gboolean onKeyRelease(GdkEventKey* evt, Widget w)
+    bool onKeyRelease(GdkEventKey* evt, Widget w)
     {
         static const int KEY_RESET  = 65481;  // F12
 
@@ -262,9 +262,9 @@ class Input
         kbd.processPresses();
         kbd.processReleases();
 
-        while(GtkD.eventsPending())
+        while(Main.eventsPending())
         {
-            GtkD.mainIteration();
+            Main.iteration();
         }
         processJoystickEvents();
     }

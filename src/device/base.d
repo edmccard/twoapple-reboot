@@ -51,7 +51,7 @@ string InitSwitches(string superCall, string[][] switches)
     }
 
     initFunc ~=
-        "ubyte offset = (slot == -1) ? 0 : slot * 16;\n";
+        "ubyte offset = cast(ubyte)((slot == -1) ? 0 : slot * 16);\n";
 
 
     string switchFuncs;
@@ -120,13 +120,13 @@ string MakeSwitch(int[] addrs, string type, string wrapped)
     string rSwitch, wSwitch, args;
 
     realWrapped = wrapped;
-    if (wrapped[length - 1] == ')')
+    if (wrapped[$ - 1] == ')')
     {
         for (int pos = 0; pos < wrapped.length; ++pos)
         {
             if (wrapped[pos] == '(')
             {
-                args = wrapped[(pos + 1) .. (length - 1)];
+                args = wrapped[(pos + 1) .. ($ - 1)];
                 realWrapped = wrapped[0 .. pos];
                 break;
             }

@@ -26,6 +26,8 @@ import peripheral.base;
 import device.base;
 import memory;
 
+import std.conv;
+
 private:
 
 string MakeRAMSwitches(bool isIIe)
@@ -80,7 +82,7 @@ string CallRAMFunction(bool isIIe, string func)
     }
 }
 
-static const string[][] langcardSwitches = [
+enum langcardSwitches = [
         mixin(MakeSwitch([0xC080], "R0", "readC080")),
         mixin(MakeSwitch([0xC081], "R0", "readC081")),
         mixin(MakeSwitch([0xC082], "R0", "readC082")),
@@ -314,7 +316,7 @@ class HighRam_IIe : HighRam
         if (numBanks > 1)
         {
             for (int b = 0; b < numBanks; ++b)
-                names[b] = name ~ " " ~ std.string.toString(b);
+                names[b] = name ~ " " ~ to!string(b);
         }
         else
         {

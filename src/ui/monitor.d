@@ -20,6 +20,8 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
+module ui.monitor;
+
 private import gtk.DrawingArea;
 private import glgtk.GLCapability;
 private import glgdk.GLDrawable;
@@ -28,6 +30,7 @@ private import glgdk.GLContext;
 private import gtkglc.glgdktypes;
 private import gtk.Widget;
 private import gtk.ToggleToolButton;
+private import gtkglc.gl; // TODO: should this be in glgtk.GLCapability?
 
 import video.base;
 

@@ -20,7 +20,9 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
-import video.base : Mode;
+module video.offsets;
+
+import video.base;
 
 static this()
 {
@@ -159,7 +161,8 @@ ushort screenOffset(vState* vSt, hState* hSt, Mode mode)
 {
     ushort sum_a6_a5_a4_a3 =
         (vSt.a6_a5_a4_a3 + hSt.a6_a5_a4_a3 + 0b1101000) & 0b1111000;
-    ushort offset = vSt.a9_a8_a7 | sum_a6_a5_a4_a3 | hSt.a2_a1_a0;
+    ushort offset =
+        cast(ushort)(vSt.a9_a8_a7 | sum_a6_a5_a4_a3 | hSt.a2_a1_a0);
 
     if (mode == Mode.HIRES)
     {

@@ -29,7 +29,7 @@ import ui.sound;
 import ui.inputevents;
 
 import gthread.Thread;
-import gtk.GtkD;
+import gtk.Main;
 import glgdk.GLdInit;
 import gtkc.gdktypes;
 import gtkc.gtktypes;
@@ -67,8 +67,8 @@ void main(string[] args)
 {
     // Init GTK
     Thread.init(null);
-	GtkD.init(args);
-	GLdInit.init(null, null);
+	Main.init(args);
+	GLdInit.init(args);
 
     // open config
 

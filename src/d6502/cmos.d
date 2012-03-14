@@ -20,6 +20,8 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
+module d6502.cmos;
+
 import d6502.base;
 import d6502.cpu;
 
@@ -214,7 +216,7 @@ class Cmos : Cpu
     {
         ushort vector = readWordOperand();
         peek(programCounter);
-        programCounter = readWord(vector, vector + 1);
+        programCounter = readWord(vector, cast(ushort)(vector + 1));
         version(CumulativeCycles) ticks(totalCycles);
     }
     
@@ -223,8 +225,8 @@ class Cmos : Cpu
     {
         baseAddress = readWordOperand();
         peek(programCounter);
-        ushort vector = baseAddress + xIndex;
-        programCounter = readWord(vector, vector + 1);
+        ushort vector = cast(ushort)(baseAddress + xIndex);
+        programCounter = readWord(vector, cast(ushort)(vector + 1));
         version(CumulativeCycles) ticks(totalCycles);
     }
 

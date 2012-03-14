@@ -157,8 +157,8 @@ class Timer
     Cycle startCycle(uint maxVal)
 	{
 		cycles.length = cycles.length + 1;
-		cycles[length-1] = new Cycle(maxVal);
-		return cycles[length-1];
+		cycles[$-1] = new Cycle(maxVal);
+		return cycles[$-1];
 	}
 
 	void tick()
@@ -189,7 +189,7 @@ main:   for (int counter = 0; counter < counters.length; ++counter)
 	private void addCounter(Counter newCounter)
 	{
 		counters.length = counters.length + 1;
-		counters[length-1] = newCounter;
+		counters[$-1] = newCounter;
 	}
 
 	private void initCounter(Counter newCounter)

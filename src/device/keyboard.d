@@ -161,7 +161,7 @@ class Keyboard
         keyStrobe = true;
 
         // assert latch < 0x80; XXX
-        latch = presses.read();
+        latch = cast(ubyte)presses.read();
         keysDown[presses.read()] = true;
     }
 

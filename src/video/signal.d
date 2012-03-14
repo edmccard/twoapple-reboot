@@ -20,6 +20,8 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
+module video.signal;
+
 import video.base;
 import video.patterns;
 import device.base;
@@ -92,7 +94,7 @@ class Signal : SignalBase
             int startCol, int stopLine, int stopCol)
     {
         PatternGenerator pattern;
-        switch (mode)
+        final switch (mode)
         {
             case Mode.TEXT:
                 pattern = textPattern;

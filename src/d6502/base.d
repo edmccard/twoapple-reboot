@@ -74,7 +74,7 @@ class CpuBase
 
     ushort programCounter;
     ubyte accumulator, xIndex, yIndex, stackPointer;
-    final StatusRegister flag;
+    StatusRegister flag;
 
     bool signalActive, irqActive, resetActive, nmiActive, nmiArmed;
 

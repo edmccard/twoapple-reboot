@@ -25,6 +25,7 @@ module host;
 import std.c.time;
 import std.c.linux.linux;
 import std.stdio;
+import std.conv;
 
 import derelict.sdl.sdl;
 import derelict.util.exception;
@@ -36,7 +37,6 @@ static this()
     try
     {
         DerelictSDL.load();
-        writefln("Loaded lib = %s", DerelictSDL.libName);
     }
     catch (DerelictException e)
     {
@@ -45,7 +45,7 @@ static this()
     }
     if (SDL_Init(0) == -1)
     {
-        writefln("%s", std.string.toString(SDL_GetError()));  
+        writefln("%s", to!string(SDL_GetError()));  
         return;
     }
     SDL = true;

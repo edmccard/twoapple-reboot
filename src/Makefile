@@ -1,10 +1,10 @@
 DMD_OPTS = -c -version=CycleAccuracy -op -Jdata -I$(GTKD)/src -I$(GTKD)/srcgl \
-	   -I$(DERELICT)/DerelictSDL -I$(DERELICT)/DerelictUtil
+	   -I$(DERELICT)/import
 
-GCC_OPTS = -m32 -lpthread -lm -lGL -ldl \
-	   -L$(DMDROOT)/dmd/lib -lphobos \
+GCC_OPTS = -m32 -lpthread -lm -lGL -ldl -lrt \
 	   -L$(GTKD) -lgtkd -lgtkdgl \
-	   -L$(DERELICT)/lib -lDerelictSDL -lDerelictUtil
+	   -L$(DERELICT)/lib -lDerelictSDL -lDerelictUtil \
+	   -lphobos2 -ldruntime
 
 ALL_SRC = $(shell find -name "*.d")
 ALL_OBJS = $(ALL_SRC:%.d=%.o)

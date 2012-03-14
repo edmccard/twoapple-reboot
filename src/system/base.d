@@ -56,7 +56,7 @@ class System
             mainRam = new PrimaryMem(0x0000, 0xC000);
             mainRam.debugName = "RAM";
             mainRom = new Rom(0xD000, 0x3000,
-                    romDump[(length-12288)..length]);
+                    romDump[($-12288)..$]);
             mainRom.debugName = "ROM";
             vidPages.lores1 = new SliceMem(0x0400, 0x0400, mainRam);
             vidPages.lores2 = new SliceMem(0x0800, 0x0400, mainRam);

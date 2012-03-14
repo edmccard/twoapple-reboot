@@ -53,7 +53,7 @@ class TextInput
             onFinish();
             return false;
         }
-        line = file.readLine() ~ x"0D";
+        line = file.readLine().idup ~ x"0D";
         pos = 0;
         return true;
     }

@@ -269,7 +269,7 @@ class DriveStatus
     import gtk.Label;
     import gtkc.pangotypes;
 
-    import std.string;
+    import std.conv;
 
     Drive drive;
     HBox display;
@@ -285,7 +285,7 @@ class DriveStatus
     {
         drive = drive_;
 
-        statusClean = "Drive " ~ std.string.toString(driveNum);
+        statusClean = "Drive " ~ to!string(driveNum);
         statusDirty = "( " ~ statusClean ~ " )";
         activity = new ProgressBar();
         activity.setText(statusClean);
@@ -520,19 +520,19 @@ class Drive
             actions.length = buttons.length = 2 +
                 (indirect ? 1 : 0) +
                 ((firstAction !is null) ? 1 : 0);
-            actions[length - 1] = cancel;
-            buttons[length - 1] = "Cancel";
+            actions[$ - 1] = cancel;
+            buttons[$ - 1] = "Cancel";
             if (indirect)
             {
-                actions[length - 2] = noSave;
-                buttons[length - 2] = "Don't save";
-                actions[length - 3] = saveAsNib;
-                buttons[length - 3] = "Save as NIB";
+                actions[$ - 2] = noSave;
+                buttons[$ - 2] = "Don't save";
+                actions[$ - 3] = saveAsNib;
+                buttons[$ - 3] = "Save as NIB";
             }
             else
             {
-                actions[length - 2] = saveAsNib;
-                buttons[length - 2] = "Save as NIB";
+                actions[$ - 2] = saveAsNib;
+                buttons[$ - 2] = "Save as NIB";
             }
             if (firstAction !is null)
             {
@@ -782,8 +782,8 @@ class DSKImage : ExternalImage
             check1 = (checkHi << 8) | checkLo;
             stream.read(checkLo); stream.read(checkHi);
             check2 = (checkHi << 8) | checkLo;
-            match1 = ((s == 2) ? 0 : (s - 1));
-            match2 = ((s == 5) ? 0 : (s + 1));
+            match1 = cast(ushort)(((s == 2) ? 0 : (s - 1)));
+            match2 = cast(ushort)(((s == 5) ? 0 : (s + 1)));
             if ((check1 != match1) || (check2 != match2)) return false;
         }
         return true;
@@ -830,9 +830,9 @@ class DSKImage : ExternalImage
             loadBytes(ADDR_PROLOGUE[0..3]);
 
             encode44(0xFE);     // volume
-            encode44(track);
+            encode44(cast(ubyte)track);
             encode44(sector);
-            encode44(0xFE ^ track ^ sector);    // check byte
+            encode44(cast(ubyte)(0xFE ^ track ^ sector));    // check byte
 
             loadBytes(EPILOGUE[0..2]);
         }
@@ -885,13 +885,13 @@ class DSKImage : ExternalImage
             //     index  0 from data  0,  86, 172
 
             trackData[x] =
-                (trackData[x] << 2) |
-                (((val & 0x01) << 1) | ((val & 0x02) >> 1));
+                cast(ubyte)((trackData[x] << 2) |
+                (((val & 0x01) << 1) | ((val & 0x02) >> 1)));
 
             // index values 86 through 341 are composed of the six
             // most significant bits of data values 0 through 255
 
-            trackData[y + 0x56] = (val >> 2);
+            trackData[y + 0x56] = cast(ubyte)(val >> 2);
 
             --x;
             if (x >= 0x00) continue;
@@ -1061,9 +1061,9 @@ class DSKImage : ExternalImage
         for (int i = 0; i < 0x156; ++i)
         {
             if (sectorData[i] < 0x96) return false;
-            nibByte = memByte[sectorData[i] - 0x96];
+            nibByte = cast(ubyte)(memByte[sectorData[i] - 0x96]);
             if (nibByte == -1) return false;
-            indexData[i] = lastByte ^ nibByte;
+            indexData[i] = cast(ubyte)(lastByte ^ nibByte);
             lastByte = indexData[i];
         }
 

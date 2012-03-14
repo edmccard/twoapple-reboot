@@ -20,6 +20,8 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
+module d6502.cpu;
+
 import d6502.base;
 
 class Cpu : CpuBase
@@ -145,7 +147,7 @@ class Cpu : CpuBase
         pushWord(programCounter);
         push(statusByte);
         flag.interrupt = true;
-        programCounter = readWord(vector, vector + 1);
+        programCounter = readWord(vector, cast(ushort)(vector + 1));
         version(CumulativeCycles) ticks(totalCycles);
     }
 
@@ -290,7 +292,8 @@ class Cpu : CpuBase
     {
         peek(programCounter);
         baseAddress = programCounter;
-        programCounter = tryShortcut(false, programCounter + offset);
+        programCounter = tryShortcut(false,
+                cast(ushort)(programCounter + offset));
     }
     
     final void addrZeropage()
@@ -328,20 +331,23 @@ class Cpu : CpuBase
     final void addrAbsoluteX(bool write)
     {
         baseAddress = readWordOperand();
-        primaryAddress = tryShortcut(write, baseAddress + xIndex);
+        primaryAddress = tryShortcut(write,
+                cast(ushort)(baseAddress + xIndex));
     }
 
     final void addrAbsoluteY(bool write)
     {
         baseAddress = readWordOperand();
-        primaryAddress = tryShortcut(write, baseAddress + yIndex);
+        primaryAddress = tryShortcut(write,
+                cast(ushort)(baseAddress + yIndex));
     }
 
     final void addrIndirectY(bool write)
     {
         ubyte vector = readByteOperand();
         baseAddress = readWord(vector, cast(ubyte)(vector + 1));
-        primaryAddress = tryShortcut(write, baseAddress + yIndex);
+        primaryAddress = tryShortcut(write,
+                cast(ushort)(baseAddress + yIndex));
     }
 
     void dec_addWithCarry(ubyte val)
@@ -352,17 +358,17 @@ class Cpu : CpuBase
             bcdSum = (bcdSum - 10) | 0x10;
         bcdSum += (accumulator & 0xF0) + (val & 0xF0);
 
-        flag.negative_ = bcdSum;
+        flag.negative_ = cast(ubyte)bcdSum;
         flag.overflow =
             (!((accumulator ^ val) & 0x80)) && ((val ^ bcdSum) & 0x80);
 
         if (bcdSum > 0x9f)
             bcdSum += 0x60;
 
-        flag.zero_ = accumulator + val + (flag.carry ? 1 : 0);
+        flag.zero_ = cast(ubyte)(accumulator + val + (flag.carry ? 1 : 0));
         flag.carry = (bcdSum > 0xFF);
 
-        accumulator = bcdSum;
+        accumulator = cast(ubyte)bcdSum;
     }
 
     void dec_subWithCarry(ubyte val)
@@ -385,9 +391,9 @@ class Cpu : CpuBase
             ah -= 6;
 
         flag.carry = (diff < 0x100);
-        flag.zero_ = flag.negative_ = diff;
+        flag.zero_ = flag.negative_ = cast(ubyte)diff;
 
-        accumulator = (ah << 4) + (al & 0x0F);
+        accumulator = cast(ubyte)((ah << 4) + (al & 0x0F));
     }
 
     final void hex_addWithCarry(ubyte val)
@@ -398,7 +404,7 @@ class Cpu : CpuBase
             (!((accumulator ^ val) & 0x80)) && ((val ^ sum) & 0x80);
         flag.carry = (sum > 0xFF);
 
-        flag.zero_ = flag.negative_ = (accumulator = sum);
+        flag.zero_ = flag.negative_ = (accumulator = cast(ubyte)sum);
     }
 
     final void hex_subWithCarry(ubyte val)
@@ -410,13 +416,13 @@ class Cpu : CpuBase
             ((accumulator ^ val) & 0x80);
         flag.carry = (diff < 0x100);
 
-        flag.zero_ = flag.negative_ = (accumulator = diff);
+        flag.zero_ = flag.negative_ = (accumulator = cast(ubyte)diff);
     }
 
     final ubyte compare(ubyte reg, ubyte val)
     {
         flag.carry = (reg >= val);
-        return reg - val;
+        return cast(ubyte)(reg - val);
     }
 
     final void bitTest(ubyte val)
@@ -429,14 +435,14 @@ class Cpu : CpuBase
     final ubyte shiftLeft(ubyte val)
     {
         flag.carry = (val > 0x7F);
-        return val << 1;
+        return cast(ubyte)(val << 1);
     }
 
     final ubyte rotateLeft(ubyte val)
     {
         bool oldCarry = flag.carry;
         flag.carry = (val > 0x7F);
-        val = (val << 1 | (oldCarry ? 1 : 0));
+        val = cast(ubyte)(val << 1 | (oldCarry ? 1 : 0));
         return val;
     }
 
@@ -456,12 +462,12 @@ class Cpu : CpuBase
 
     final ubyte increment(ubyte val)
     {
-        return val + 1;
+        return cast(ubyte)(val + 1);
     }
 
     final ubyte decrement(ubyte val)
     {
-        return val - 1;
+        return cast(ubyte)(val - 1);
     }
 
     static string SimpleOpcode(string name, string opcode, string action)
@@ -501,7 +507,7 @@ class Cpu : CpuBase
         {
             int opcode = opcodes[op];
             modes ~= "[\"" ~ hexByte(opcode) ~ "\", \"";
-            switch ((opcode & 0b00011100) >> 2)
+            final switch ((opcode & 0b00011100) >> 2)
             {
                 case 0:
                     modes ~= "IndirectX()";
@@ -544,7 +550,7 @@ class Cpu : CpuBase
         {
             int opcode = opcodes[op];
             modes ~= "[\"" ~ hexByte(opcode) ~ "\", \"";
-            switch ((opcode & 0b00011100) >> 2)
+            final switch ((opcode & 0b00011100) >> 2)
             {
                 case 0:
                     modes ~= "Immediate";

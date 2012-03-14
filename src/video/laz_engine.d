@@ -20,6 +20,8 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
+module video.laz_engine;
+
 import video.base;
 
 private:
@@ -59,15 +61,15 @@ class LazEngine : Screen
     ];
     ushort* monoPalette;
 
-    mixin("static final ushort[32][8] colorPalettes = " 
+    mixin("static ushort[32][8] colorPalettes = " 
             ~ import("palette_5_6_5"));
     ushort* colorPalette;
 
-    mixin("static final uint[32][4][3] schemes = "
+    mixin("static uint[32][4][3] schemes = "
             ~ import("laz_scheme"));
     uint[32]* scheme;
 
-    mixin("static final uint[32][2][2] sharp_table = "
+    mixin("static uint[32][2][2] sharp_table = "
             ~ import("laz_sharp"));
 
     this()
@@ -173,7 +175,7 @@ class LazEngine : Screen
             paletteIndex = scheme[col & 0b11][colorIndex];
             if (paletteIndex > 0x80)
             {
-                switch (sharp_table[prevBit][nextBit][colorIndex])
+                final switch (sharp_table[prevBit][nextBit][colorIndex])
                 {
                     case 0:
                         paletteIndex = Color.Black;
@@ -196,7 +198,7 @@ class LazEngine : Screen
                 paletteIndex = scheme[col & 0b11][colorIndex];
                 if (paletteIndex > 0x80)
                 {
-                    switch (sharp_table[prevBit][nextBit][colorIndex])
+                    final switch (sharp_table[prevBit][nextBit][colorIndex])
                     {
                         case 0:
                             paletteIndex = Color.Black;

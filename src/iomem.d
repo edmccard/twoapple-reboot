@@ -27,7 +27,7 @@ import system.peripheral;
 import peripheral.base;
 import device.base;
 
-import std.string;
+import std.conv;
 
 class IOMem
 {
@@ -39,7 +39,9 @@ class IOMem
 
         this(int slotNum_, ubyte[] rom)
         {
-            super(0xC000 + (slotNum_ * 0x100), 0x0100, rom);
+            super(
+                    cast(ushort)(0xC000 + (slotNum_ * 0x100)),
+                    cast(uint)0x0100, rom);
             slotNum = slotNum_;
         }
 
@@ -106,7 +108,7 @@ class IOMem
                 {
                     selectMem[slot] = new IOSelectMem(slot, card.ioSelectROM);
                     selectMem[slot].debugName =
-                        "Slot " ~ std.string.toString(slot) ~ " ROM";
+                        "Slot " ~ to!string(slot) ~ " ROM";
                     decoder.install(selectMem[slot]);
                     if (card.ioStrobeROM !is null)
                     {

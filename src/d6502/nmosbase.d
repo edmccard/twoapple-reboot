@@ -20,6 +20,8 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
+module d6502.nmosbase;
+
 import d6502.cpu;
 
 class NmosBase : Cpu

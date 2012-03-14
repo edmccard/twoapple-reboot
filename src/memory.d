@@ -20,12 +20,12 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
-import std.string;
+import std.conv;
 
 class Memory
 {
-	final ushort baseAddress;
-	final uint blockSize;
+	ushort baseAddress;
+	uint blockSize;
     string debugName;
 
 	this(ushort baseAddr, uint size)
@@ -143,7 +143,7 @@ class BankMem : DataMem
         {
             for (int n = 0; n < debugNames.length; ++n)
             {
-                debugNames[n] = name ~ " bank " ~ std.string.toString(n);
+                debugNames[n] = name ~ " bank " ~ to!string(n);
             }
         }
         else
@@ -195,8 +195,7 @@ class SubBankMem : DataMem
         {
             for (int n = 0; n < numSubBanks; ++n)
             {
-                debugNames[b][n] = names[b] ~ " bank " ~
-                    std.string.toString(n);
+                debugNames[b][n] = names[b] ~ " bank " ~ to!string(n);
             }
         }
     }

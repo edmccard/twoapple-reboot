@@ -20,6 +20,8 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
+module video.scanner;
+
 import video.base;
 import video.offsets;
 import memory;
@@ -243,8 +245,8 @@ class Scanner_II : Scanner
     {
         uint clock = vidCycle.currentVal();
         if (((clock % 65) < 25) && (mode != Mode.HIRES))
-            return decoder.read(0x1400 + (page * 0x400) +
-                    scanOffset(clock, mode));
+            return decoder.read(
+              cast(ushort)(0x1400 + (page * 0x400) + scanOffset(clock, mode)));
         else
             return displayMem[mode][page].data[scanOffset(clock, mode)];
     }

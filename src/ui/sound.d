@@ -24,6 +24,7 @@ module ui.sound;
 
 import std.stdio;
 import std.c.string;
+import std.conv;
 
 import derelict.sdl.sdl;
 import derelict.util.exception;
@@ -41,7 +42,7 @@ static this()
     {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) == -1)
         {
-            writefln("%s", std.string.toString(SDL_GetError()));
+            writefln("%s", to!string(SDL_GetError()));
             return;
         }
         auto checkCard = new SoundCardYes();
@@ -114,7 +115,7 @@ class SoundCardYes : SoundCard
 
         if (SDL_OpenAudio(&audioRequest, null) == -1)
         {
-            writefln("%s", std.string.toString(SDL_GetError()));
+            writefln("%s", to!string(SDL_GetError()));
             return;
         }
 

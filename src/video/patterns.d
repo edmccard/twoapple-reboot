@@ -20,6 +20,8 @@
  + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  +/
 
+module video.patterns;
+
 import video.base;
 import device.base;
 import memory;
@@ -63,7 +65,7 @@ void initReverseBits()
     }
 }
 
-final ubyte INVERSE = 0b01111111;
+ubyte INVERSE = 0b01111111;
 
 public:
 
@@ -168,9 +170,9 @@ class TextPatternGenerator : PatternGenerator
 
 class TextPatternGenerator_II : TextPatternGenerator
 {
-    mixin("static final ubyte[256] charsetUpper_II = "
+    mixin("static ubyte[256] charsetUpper_II = "
             ~ import("charset_upper_ii"));
-    mixin("static final ubyte[256] charsetSymbol_II = "
+    mixin("static ubyte[256] charsetSymbol_II = "
             ~ import("charset_symbol_ii"));
     
     void initPatterns()
@@ -225,13 +227,13 @@ class TextPatternGenerator_II : TextPatternGenerator
 
 class TextPatternGenerator_IIe : TextPatternGenerator
 {
-    mixin("static final ubyte[256] charsetUpper_IIe = "
+    mixin("static ubyte[256] charsetUpper_IIe = "
             ~ import("charset_upper_iie"));
-    mixin("static final ubyte[256] charsetSymbol_IIe = "
+    mixin("static ubyte[256] charsetSymbol_IIe = "
             ~ import("charset_symbol_iie"));
-    mixin("static final ubyte[256] charsetLower = "
+    mixin("static ubyte[256] charsetLower = "
             ~ import("charset_lower"));
-    mixin("static final ubyte[256] charsetMouse = "
+    mixin("static ubyte[256] charsetMouse = "
             ~ import("charset_mouse"));
 
     void initPatterns()
@@ -340,7 +342,7 @@ class LoresPatternGenerator : PatternGenerator
             0x1, 0x9, 0xA, 0xD, 0x3, 0xB, 0x7, 0xF];
         for (int bits4 = 0; bits4 < 16; ++bits4)
         {
-            ubyte bits8 = (dhrBits4[bits4] << 4) | dhrBits4[bits4];
+            ubyte bits8 = cast(ubyte)((dhrBits4[bits4] << 4) | dhrBits4[bits4]);
             ushort bits16 = (bits8 << 8) | bits8;
             uint bits32 = (bits16 << 16) | bits16;
             patterns[bits4][0][0] = bits32 >> 25;
