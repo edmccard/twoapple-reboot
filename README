@@ -1,0 +1,51 @@
+=Twoapple Apple II Emulator=
+
+http://twoapple.googlecode.com
+
+==About==
+
+Twoapple is an Apple II/IIe emulator written in the D programming language.
+
+==Usage==
+
+When started with no command-line options, Twoapple will run in II+ mode; use
+the "--iie" command-line option to run in IIe mode.
+
+To select the ROM to use, choose a suitable file in the dialog which opens at
+program startup. (Currently, there are no checks for ROM file validity beyond a
+simple file size test).
+
+The user interface is fairly simple at the moment: F12 acts as reset, and
+Pause/Break allows you to pause and restart the emulation (there is also a
+toolbar button for this). The "Boot" toolbar button acts as a power on reset,
+and the "Mono" toolbar button switches back and forth between color and
+monochrome display.
+
+Opening, saving, and ejecting disk images can be done using the drive menus at
+the bottom of the window. The "WP" checkbox acts like a write-protect switch
+for the drive, rather than for individual images. (If a read-only image file is
+loaded, the write-protect status is set for the drive, and cannot be changed
+until another image is loaded.)
+
+==Building from source==
+
+To build twoapple, you will first need to install the Digital Mars D compiler
+(DMD) the D language bindings to GTK+ (gtkD), and the D language bindings to
+SDL (Derelict).
+
+* DMD: http://www.digitalmars.com/d/1.0/changelog.html
+* gtkD: http://www.dsource.org/projects/dui
+  * depends on GTK+2.0 (http://www.gtk.org) and GtkGLExt
+    (http://gtkglext.sourceforge.net).
+  * this patch (http://twoapple.googlecode.com/files/gtkD-pre3-ref-fix.patch)
+    is also needed (from the gtkD directory,
+    `patch -p1 < gtkD-pre3-ref-fix.patch`).
+* Derelict: http://www.dsource.org/projects/derelict
+  * depends on SDL (http://www.sdl.org).
+  * follow the build instructions to build the static libraries.
+* Twoapple: http://code.google.com/p/twoapple/downloads/list
+  * (or via svn:
+    `svn checkout http://twoapple.googlecode.com/svn/trunk twoapple`).
+  * to build: `cd src; make DMDROOT=/path/to/dmd GTKD=/path/to/gtkD
+    DERELICT=/path/to/derelict`
+
