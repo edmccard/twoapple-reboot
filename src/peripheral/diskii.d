@@ -808,7 +808,7 @@ class DSKImage : ExternalImage
 
         void loadBytes(ubyte[] data)
         {
-            uint len = data.length;
+            uint len = cast(uint)data.length;
             trackData[offset..offset+len] = data;
             offset += len;
         }

@@ -100,7 +100,9 @@ class Delay
 
         // Assume that tv_sec = 0;
         if (timeCompare(&timeShould, &timeNow, &timeDiff))
-            usleep(timeDiff.tv_usec);
+        {
+            usleep(cast(uint)timeDiff.tv_usec);
+	    }
     }
 
     void reset()
@@ -122,7 +124,8 @@ class Delay
         {
             gettimeofday(&timeNow, null);
             timeCompare(&timeNow, &timeCheck, &timeDiff);
-            uint elapsed = (timeDiff.tv_sec * 1000000) + timeDiff.tv_usec;
+            uint elapsed =
+                cast(uint)((timeDiff.tv_sec * 1000000) + timeDiff.tv_usec);
             if (elapsed >= 1000000)
             {
                 float percent = cast(float)checkCycles / cast(float)elapsed;
@@ -137,12 +140,12 @@ class Delay
 bool timeCompare(timeval* later, timeval* earlier, timeval* diff)
 {
     if (later.tv_usec < earlier.tv_usec) {
-        int nsec = (earlier.tv_usec - later.tv_usec) / 1000000 + 1;
+        int nsec = cast(int)((earlier.tv_usec - later.tv_usec) / 1000000 + 1);
         earlier.tv_usec -= 1000000 * nsec;
         earlier.tv_sec += nsec;
     }
     if (later.tv_usec - earlier.tv_usec > 1000000) {
-        int nsec = (later.tv_usec - earlier.tv_usec) / 1000000;
+        int nsec = cast(int)((later.tv_usec - earlier.tv_usec) / 1000000);
         earlier.tv_usec += 1000000 * nsec;
         earlier.tv_sec -= nsec;
     }

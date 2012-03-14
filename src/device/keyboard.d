@@ -87,13 +87,13 @@ class Keyboard
         {
             // assert(canRead()); XXX
             int val = values[nextRead];
-            nextRead = (nextRead + 1) % values.length;
+            nextRead = (nextRead + 1) % cast(int)values.length;
             return val;
         }
 
         void write(int val)
         {
-            int next = (nextWrite + 1) % values.length;
+            int next = (nextWrite + 1) % cast(int)values.length;
             if (next != nextRead)
             {
                 values[nextWrite] = val;

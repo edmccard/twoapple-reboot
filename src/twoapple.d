@@ -48,7 +48,7 @@ class TestSystem : II
 
     void setRom(ubyte[] rom_data)
     {
-        uint rom_len = rom_data.length;
+        uint rom_len = cast(uint)rom_data.length;
         memory_.mainRom.data_[0..12288] = rom_data[(rom_len - 12288)..rom_len];
     }
 }

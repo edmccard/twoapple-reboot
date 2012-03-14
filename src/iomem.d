@@ -297,7 +297,7 @@ class IOMem_IIe : IOMem
 
     void setRom(ubyte[] romDump)
     {
-        int c100 = romDump.length - 16128;
+        int c100 = cast(int)(romDump.length - 16128);
         c100c2ff = new Rom(0xC100, 0x0200, romDump[c100 .. (c100 + 0x0200)]);
         intC3ROM = new IntC3ROM(romDump[(c100 + 0x0200) .. (c100 + 0x0300)]);
         c400c7ff = new Rom(0xC400, 0x0400,

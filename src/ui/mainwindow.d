@@ -442,7 +442,7 @@ class TwoappleDialog
             response = 0;
         else if ((response == ResponseType.GTK_RESPONSE_CANCEL) ||
                 (response == ResponseType.GTK_RESPONSE_DELETE_EVENT))
-            response = buttonText.length - 1;
+            response = cast(int)(buttonText.length - 1);
 
         host.delay.reset();
         soundCard.resume();

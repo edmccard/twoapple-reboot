@@ -168,7 +168,7 @@ class Timer
 
     private void deleteCounters()
     {
-        int numCounters = counters.length;
+        int numCounters = cast(int)counters.length;
         int lastCounter;
 main:   for (int counter = 0; counter < counters.length; ++counter)
         {

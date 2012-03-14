@@ -188,7 +188,8 @@ class TextPatternGenerator_II : TextPatternGenerator
         {
             foreach(index, pattern; segments[seg])
             {
-                uint ascii = (((index / 32) * 4) + (index % 4)) + (seg * 32);
+                uint ascii =
+                    cast(uint)((((index / 32) * 4) + (index % 4)) + (seg * 32));
                 uint dotLine = (index / 4) % 8;
                 switch (seg)
                 {
@@ -249,7 +250,8 @@ class TextPatternGenerator_IIe : TextPatternGenerator
         {
             foreach(index, pattern; segments[seg])
             {
-                uint ascii = (((index / 32) * 4) + (index % 4)) + (seg * 32);
+                uint ascii =
+                    cast(uint)((((index / 32) * 4) + (index % 4)) + (seg * 32));
                 uint dotLine = (index / 4) % 8;
                 switch (seg)
                 {
