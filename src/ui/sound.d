@@ -38,6 +38,7 @@ static import host;
 static this()
 {
     soundCard = new SoundCardNo();
+/+  TODO: fix sound segfault in fillAudio
     if (host.SDL)
     {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) == -1)
@@ -49,6 +50,7 @@ static this()
         if (checkCard.isActive)
             soundCard = checkCard;
     }
++/
     host.delay.soundCardActive = &soundCard.getIsActive;
     host.delay.soundCardHasEnoughData = &soundCard.hasEnoughData;
 }
