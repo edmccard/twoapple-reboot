@@ -79,7 +79,7 @@ static this()
     }
 }
 
-Input input;
+__gshared Input input;
 
 private:
 
