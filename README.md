@@ -21,7 +21,7 @@ For now, see README.orig
 
 ### TODO
 
-+ working sound
++ use new D2 features
 + better UI
 + cassette emulation
 + more peripherals
