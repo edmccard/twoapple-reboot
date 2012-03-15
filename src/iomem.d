@@ -197,7 +197,7 @@ class IOMem_IIe : IOMem
 
     void reset()
     {
-        deactivateStrobeMem(); 
+        deactivateStrobeMem();
         resetIntCXROM();
         resetSlotC3ROM();
     }
@@ -210,7 +210,7 @@ class IOMem_IIe : IOMem
         // $C3XX cannot be configured for slot response if
         // INTCXROM is set.
         if (intCXROM) return;
-        
+
         if (selectMem[3] !is null)
         {
             decoder.install(selectMem[3]);
@@ -309,4 +309,3 @@ class IOMem_IIe : IOMem
             intStrobeMem.debugName = "Internal ROM";
     }
 }
-

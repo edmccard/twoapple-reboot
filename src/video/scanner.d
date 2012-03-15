@@ -49,7 +49,7 @@ class Scanner : ScannerBase
         int frameLen = 262 * 65;    // XXX PAL: 312 * 65
         vidCycle = timer.startCycle(frameLen);
         graphicsTime = true;
-        
+
         timer.new Counter(frameLen, &graphicsTimeOn);
         timer.new DelayedCounter(frameLen, &frameComplete, frameLen - 1);
         timer.new DelayedCounter(frameLen, &graphicsTimeOff, 160 * 65);
@@ -294,4 +294,3 @@ class Scanner_IIe : Scanner
         mixin(MakeSwitch([0xC01B], "R", "readMixed"))
     ]));
 }
-

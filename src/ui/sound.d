@@ -209,4 +209,3 @@ extern(C) void audioCallback(void* userdata, Uint8* stream, int len)
 {
     (cast(SoundCardYes)userdata).fillAudio(stream, len);
 }
-

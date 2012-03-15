@@ -45,7 +45,7 @@ static this()
     }
     if (SDL_Init(0) == -1)
     {
-        writefln("%s", to!string(SDL_GetError()));  
+        writefln("%s", to!string(SDL_GetError()));
         return;
     }
     SDL = true;
@@ -78,7 +78,7 @@ class Delay
     {
         while (soundCardHasEnoughData())
         {
-            usleep(1000); 
+            usleep(1000);
         }
     }
 
@@ -102,7 +102,7 @@ class Delay
         if (timeCompare(&timeShould, &timeNow, &timeDiff))
         {
             usleep(cast(uint)timeDiff.tv_usec);
-	    }
+        }
     }
 
     void reset()

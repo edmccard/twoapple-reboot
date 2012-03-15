@@ -199,7 +199,7 @@ class NmosUndoc : NmosBase
         readVal = operand1 = readFinal(programCounter);
         flag.zero_ = flag.negative_ = (accumulator = readVal);
         flag.carry = (flag.negative_ > 0x7F);
-    } 
+    }
 
     /* ANC #$$ */
     override void opcode2B()
@@ -350,4 +350,3 @@ class NmosUndoc : NmosBase
         else hex_subWithCarry(readVal);
     }
 }
-

@@ -219,7 +219,7 @@ class Cmos : Cpu
         programCounter = readWord(vector, cast(ushort)(vector + 1));
         version(CumulativeCycles) ticks(totalCycles);
     }
-    
+
     /* JMP ($$$$,X) */
     void opcode7C()
     {
@@ -237,4 +237,3 @@ class Cmos : Cpu
         flag.zero_ = accumulator & readVal;
     }
 }
-

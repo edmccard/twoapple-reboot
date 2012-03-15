@@ -302,4 +302,3 @@ class IIe : System
         mmu.initIO(video_.scanner, &io_.kbd.peekLatch);
     }
 }
-

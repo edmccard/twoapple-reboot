@@ -61,8 +61,8 @@ class Saturn128 : Peripheral
 {
     AddressDecoder decoder;
 
-	ReadFunc origRead;
-	WriteFunc origWrite;
+    ReadFunc origRead;
+    WriteFunc origWrite;
     bool preWrite;
     bool readEn, writeEn;
     BankMem e000ffff;
@@ -149,7 +149,7 @@ class Saturn128 : Peripheral
     }
 
     mixin(MakeSaturnSwitches());
-    
+
     mixin(InitSwitches("", [
         mixin(MakeSwitch([0xC080], "R0W", "accessC080")),
         mixin(MakeSwitch([0xC081], "R0W", "accessC081")),

@@ -24,67 +24,67 @@ module timer;
 
 class Timer
 {
-	class Cycle
-	{
-		int delta;
-		uint rollOver;
+    class Cycle
+    {
+        int delta;
+        uint rollOver;
 
-		this(uint maxVal)
-		{
-			rollOver = maxVal;
+        this(uint maxVal)
+        {
+            rollOver = maxVal;
             restart();
-		}
+        }
 
         void restart()
         {
-			delta = 0 - currentCounter.elapsed();
+            delta = 0 - currentCounter.elapsed();
         }
 
-		uint currentVal()
-		{
-			return (currentCounter.elapsed() + delta) % rollOver;
-		}
+        uint currentVal()
+        {
+            return (currentCounter.elapsed() + delta) % rollOver;
+        }
 
-		void update()
-		{
-			delta = currentVal();
-		}
-	}
+        void update()
+        {
+            delta = currentVal();
+        }
+    }
 
-	class Counter
-	{
-		bool delegate() expiry;
-		uint startLength, currentLength;
-		int ticks;
+    class Counter
+    {
+        bool delegate() expiry;
+        uint startLength, currentLength;
+        int ticks;
         bool shouldContinue;
 
-		this(uint start)
-		{
+        this(uint start)
+        {
             shouldContinue = true;
-			startLength = currentLength = ticks = start;
+            startLength = currentLength = ticks = start;
             addCounter(this);
-		}
+        }
 
-		this(uint start, bool delegate() expiration)
-		{
-			this(start);
+        this(uint start, bool delegate() expiration)
+        {
+            this(start);
             initCounter(this);
-			expiry = expiration;
-		}
+            expiry = expiration;
+        }
 
-		final uint elapsed()
-		{
-			return currentLength - ticks;
-		}
+        final uint elapsed()
+        {
+            return currentLength - ticks;
+        }
 
-		final void tick()
-		{
-			--ticks;
-			if (ticks == 0)
-			{
-				reset();
-			}
-		}
+        final void tick()
+        {
+            --ticks;
+            if (ticks == 0)
+            {
+                reset();
+            }
+        }
 
         final void forceExpire()
         {
@@ -98,73 +98,73 @@ class Timer
             forceExpire();
         }
 
-		private final void resume()
-		{
-			currentLength = ticks;
-		}
+        private final void resume()
+        {
+            currentLength = ticks;
+        }
 
-		private final bool expire()
-		{
-			ticks = currentLength = startLength;
-			return expiry();
-		}
+        private final bool expire()
+        {
+            ticks = currentLength = startLength;
+            return expiry();
+        }
 
         private bool nullExpiry() { return false; }
-	}
+    }
 
-	class DelayedCounter : Counter
-	{
+    class DelayedCounter : Counter
+    {
         uint realStart;
         bool delegate() realExpiry;
 
-		this(uint start, bool delegate() expiration, uint delay)
-		{
-			realStart = start;
+        this(uint start, bool delegate() expiration, uint delay)
+        {
+            realStart = start;
             realExpiry = expiration;
             super(delay, &becomeReal);
-		}
+        }
 
-		private bool becomeReal()
-		{
-			ticks = currentLength = startLength = realStart;
-			expiry = realExpiry;
-			bool retval = expiry();
-			initCounter(this);
+        private bool becomeReal()
+        {
+            ticks = currentLength = startLength = realStart;
+            expiry = realExpiry;
+            bool retval = expiry();
+            initCounter(this);
             return retval;
-		}
-	}
+        }
+    }
 
-	Cycle[] cycles;
-	Counter[] counters;
-	Counter primaryCounter, currentCounter;
+    Cycle[] cycles;
+    Counter[] counters;
+    Counter primaryCounter, currentCounter;
     uint hertz;
 
-	this(uint primaryStart, uint hz)
-	{
+    this(uint primaryStart, uint hz)
+    {
         hertz = hz;
-		cycles.length = 10;
-		counters.length = 10;
-		cycles.length = 0;
-		counters.length = 0;
-		currentCounter = primaryCounter = new Counter(primaryStart);
-	}
+        cycles.length = 10;
+        counters.length = 10;
+        cycles.length = 0;
+        counters.length = 0;
+        currentCounter = primaryCounter = new Counter(primaryStart);
+    }
 
-	final void onPrimaryStop(bool delegate() expiration)
-	{
-		primaryCounter.expiry = expiration;
-	}
+    final void onPrimaryStop(bool delegate() expiration)
+    {
+        primaryCounter.expiry = expiration;
+    }
 
     Cycle startCycle(uint maxVal)
-	{
-		cycles.length = cycles.length + 1;
-		cycles[$-1] = new Cycle(maxVal);
-		return cycles[$-1];
-	}
+    {
+        cycles.length = cycles.length + 1;
+        cycles[$-1] = new Cycle(maxVal);
+        return cycles[$-1];
+    }
 
-	void tick()
-	{
-		currentCounter.tick();
-	}
+    void tick()
+    {
+        currentCounter.tick();
+    }
 
     private void deleteCounters()
     {
@@ -186,26 +186,26 @@ main:   for (int counter = 0; counter < counters.length; ++counter)
         }
     }
 
-	private void addCounter(Counter newCounter)
-	{
-		counters.length = counters.length + 1;
-		counters[$-1] = newCounter;
-	}
+    private void addCounter(Counter newCounter)
+    {
+        counters.length = counters.length + 1;
+        counters[$-1] = newCounter;
+    }
 
-	private void initCounter(Counter newCounter)
-	{
-		if (newCounter.ticks < currentCounter.ticks)
-		{
-			reset(newCounter);
-		}
-		else
-		{
-			newCounter.ticks += currentCounter.elapsed();
-		}
-	}
+    private void initCounter(Counter newCounter)
+    {
+        if (newCounter.ticks < currentCounter.ticks)
+        {
+            reset(newCounter);
+        }
+        else
+        {
+            newCounter.ticks += currentCounter.elapsed();
+        }
+    }
 
-	private void reset(Counter newCounter = null)
-	{
+    private void reset(Counter newCounter = null)
+    {
         // update cycle counts
         for (int cycle = 0; cycle < cycles.length; ++cycle)
         {
@@ -238,7 +238,6 @@ main:   for (int counter = 0; counter < counters.length; ++counter)
             if (counters[counter].ticks < currentCounter.ticks)
                 currentCounter = counters[counter];
         }
-	}
+    }
 
 }
-

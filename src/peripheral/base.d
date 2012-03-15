@@ -56,4 +56,3 @@ class Peripheral
 
     mixin(EmptyInitSwitches());
 }
-

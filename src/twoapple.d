@@ -67,8 +67,8 @@ void main(string[] args)
 {
     // Init GTK
     Thread.init(null);
-	Main.init(args);
-	GLdInit.init(args);
+    Main.init(args);
+    GLdInit.init(args);
 
     // open config
 
@@ -112,4 +112,3 @@ string checkRomFile(TwoappleFile checkFile)
     else
         return "Invalid ROM file";
 }
-

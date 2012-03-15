@@ -121,4 +121,3 @@ class Video_IIe : Video
         return new Signal_IIe();
     }
 }
-

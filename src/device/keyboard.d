@@ -156,7 +156,7 @@ class Keyboard
     void processPresses()
     {
         if (!presses.canRead()) return;
-        
+
         anyKeyDown = true;
         keyStrobe = true;
 
@@ -409,4 +409,3 @@ class Keyboard_IIe : Keyboard
          "W", "clearKeystrobe"))
     ]));
 }
-

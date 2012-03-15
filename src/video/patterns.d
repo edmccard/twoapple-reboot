@@ -174,7 +174,7 @@ class TextPatternGenerator_II : TextPatternGenerator
             ~ import("charset_upper_ii"));
     mixin("static ubyte[256] charsetSymbol_II = "
             ~ import("charset_symbol_ii"));
-    
+
     void initPatterns()
     {
         ubyte[][] segments = new ubyte[][8];
@@ -385,7 +385,7 @@ class LoresPatternGenerator : PatternGenerator
         ubyte* data = scanner.getData(scanLine, startCol + 25);
         ubyte* auxData = scanner.getData80(scanLine, startCol + 25);
         uint memNybble;
-        
+
         for (uint offset = 0; offset < len; ++offset)
         {
             memNybble = (auxData[offset] >> shiftAmt) & 0x0F;
@@ -486,4 +486,3 @@ class HiresPatternGenerator_Revision0 : HiresPatternGenerator
         }
     }
 }
-

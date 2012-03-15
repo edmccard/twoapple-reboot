@@ -95,4 +95,3 @@ struct VideoPages
         hires2.reboot();
     }
 }
-

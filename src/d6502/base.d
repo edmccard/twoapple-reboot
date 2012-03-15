@@ -41,7 +41,7 @@ final class StatusRegister
     ubyte toByte()
     {
         return (carry ? 0x01 : 0) |
-            ((zero_ == 0) ? 0x02 : 0) | 
+            ((zero_ == 0) ? 0x02 : 0) |
             (interrupt ? 0x04 : 0) |
             (decimal ? 0x08 : 0) |
             0x30 |          // break and reserved both set
@@ -137,4 +137,3 @@ class CpuBase
     abstract void nmiLow(bool signalLow);
     abstract void irqLow(bool signalLow);
 }
-

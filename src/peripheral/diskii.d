@@ -487,7 +487,7 @@ class Drive
         imgFile = ExternalImage.loadImage(file);
         assert(imgFile !is null);
         imgData = imgFile.imgData;
-        
+
         return true;
     }
 
@@ -868,7 +868,7 @@ class DSKImage : ExternalImage
         int x = 0x55;
         ubyte y = 2;
         uint val;
-    
+
         // Translate 256 bytes of data into 342 6-bit index values
 
         while(true)
@@ -1053,7 +1053,7 @@ class DSKImage : ExternalImage
         ubyte[] dskData = saveData[dskOffset..dskOffset+SECTOR_LENGTH];
 
         // Translate the 342 disk bytes into 6-bit index values
-        
+
         ubyte[] indexData = new ubyte[DATA_FIELD_LENGTH];
 
         int lastByte = 0;
@@ -1141,4 +1141,3 @@ class NIBImage : ExternalImage
         }
     }
 }
-

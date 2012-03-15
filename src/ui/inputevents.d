@@ -278,4 +278,3 @@ class Input
         return true;
     }
 }
-

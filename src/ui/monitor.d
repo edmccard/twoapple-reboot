@@ -38,16 +38,16 @@ Monitor monitor;
 
 class Monitor : DrawingArea
 {
-	mixin GLCapability;
+    mixin GLCapability;
 
     Screen screen;
 
-	this()
-	{
-		setGLCapability(new GLConfig(
-                    GLConfigMode.MODE_RGB | GLConfigMode.MODE_DOUBLE,
-                    GLConfigMode.MODE_RGB));
-	}
+    this()
+    {
+        setGLCapability(new GLConfig(
+                GLConfigMode.MODE_RGB | GLConfigMode.MODE_DOUBLE,
+                GLConfigMode.MODE_RGB));
+    }
 
     void installScreen(Screen screen_)
     {
@@ -55,9 +55,9 @@ class Monitor : DrawingArea
         setSizeRequest(screen.width, screen.height * 2);
     }
 
-	bool initGL()
-	{
-		resizeGL(null);
+    bool initGL()
+    {
+        resizeGL(null);
 
         glDisable(GL_ALPHA_TEST);
         glDisable(GL_BLEND);
@@ -71,26 +71,25 @@ class Monitor : DrawingArea
 
         glPixelZoom(1.0, -2.0);
 
-		return true;
-	}
+        return true;
+    }
 
-	bool drawGL(GdkEventExpose* event = null)
-	{
+    bool drawGL(GdkEventExpose* event = null)
+    {
         glRasterPos2i(-1, 1);
         glDrawPixels(screen.width, screen.height, GL_RGB,
                 GL_UNSIGNED_SHORT_5_6_5, screen.data);
-		return true;
-	}
+                return true;
+    }
 
-	bool resizeGL(GdkEventConfigure* event = null)
-	{
+    bool resizeGL(GdkEventConfigure* event = null)
+    {
         glViewport(0, 0, screen.width, screen.height * 2);
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-		return true;
-	}
+        return true;
+    }
 }
-

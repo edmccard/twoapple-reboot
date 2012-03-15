@@ -206,4 +206,3 @@ class Signal_IIe : Signal
         mixin(MakeSwitch([0xC01F], "R", "readCol80Switch"))
     ]));
 }
-

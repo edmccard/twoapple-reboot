@@ -24,24 +24,24 @@ import std.conv;
 
 class Memory
 {
-	ushort baseAddress;
-	uint blockSize;
+    ushort baseAddress;
+    uint blockSize;
     string debugName;
 
-	this(ushort baseAddr, uint size)
-	{
-		assert(baseAddr + size <= 0x10000,
-                "Memory block larger than 64K");
-		assert((baseAddr % 0x0100) == 0,
-                "Memory block does not start on page boundary");
-		assert((size % 0x0100) == 0,
-                "Memory block does not end on page boundary");
-		baseAddress = baseAddr;
-		blockSize = size;
-	}
+    this(ushort baseAddr, uint size)
+    {
+        assert(baseAddr + size <= 0x10000,
+        "Memory block larger than 64K");
+        assert((baseAddr % 0x0100) == 0,
+        "Memory block does not start on page boundary");
+        assert((size % 0x0100) == 0,
+        "Memory block does not end on page boundary");
+        baseAddress = baseAddr;
+        blockSize = size;
+    }
 
-	abstract ubyte read(ushort addr);
-	abstract void write(ushort addr, ubyte val);
+    abstract ubyte read(ushort addr);
+    abstract void write(ushort addr, ubyte val);
     void reboot() {}
 }
 
@@ -58,36 +58,36 @@ class ZeroMem : Memory
 
 class DataMem : Memory
 {
-	ubyte* data;
-	ubyte data_[];
+    ubyte* data;
+    ubyte data_[];
 
-	this(ushort baseAddr, uint size)
-	{
-		super(baseAddr, size);
-	}
+    this(ushort baseAddr, uint size)
+    {
+        super(baseAddr, size);
+    }
 
-	ubyte read(ushort addr)
-	{
-		return data[addr - baseAddress];
-	}
+    ubyte read(ushort addr)
+    {
+        return data[addr - baseAddress];
+    }
 
-	void write(ushort addr, ubyte val)
-	{
-		data[addr - baseAddress] = val;
-	}
+    void write(ushort addr, ubyte val)
+    {
+        data[addr - baseAddress] = val;
+    }
 }
 
 class PrimaryMem : DataMem
 {
-	this(ushort baseAddr, uint size)
-	{
-		super(baseAddr, size);
-	}
+    this(ushort baseAddr, uint size)
+    {
+        super(baseAddr, size);
+    }
 
     void reboot()
     {
-		data_ = new ubyte[blockSize];
-		data = data_.ptr;
+        data_ = new ubyte[blockSize];
+        data = data_.ptr;
     }
 }
 
@@ -107,12 +107,12 @@ class SliceMem : DataMem
 {
     DataMem otherMem;
 
-	this(ushort baseAddr, uint size, DataMem other)
-	{
-		super(baseAddr, size);
+    this(ushort baseAddr, uint size, DataMem other)
+    {
+        super(baseAddr, size);
         otherMem = other;
         debugName = otherMem.debugName;
-	}
+    }
 
     void reboot()
     {
@@ -121,7 +121,7 @@ class SliceMem : DataMem
         assert((otherStart >= 0) && (otherEnd <= otherMem.blockSize),
                 "Memory slice out of range");
         data_ = otherMem.data_[otherStart..otherEnd];
-		data = data_.ptr;
+                data = data_.ptr;
     }
 }
 
@@ -130,7 +130,7 @@ class BankMem : DataMem
     ubyte[][] banks;
     string[] debugNames;
 
-	this(ushort baseAddr, uint size, uint numBanks)
+    this(ushort baseAddr, uint size, uint numBanks)
     {
         super(baseAddr, size);
         banks.length = numBanks;
@@ -236,12 +236,12 @@ alias void delegate(ushort, ubyte) WriteFunc;
 
 class AddressDecoder
 {
-	ReadFunc readPages[256];
-	WriteFunc writePages[256];
+    ReadFunc readPages[256];
+    WriteFunc writePages[256];
     Memory readResponders[256];
     Memory writeResponders[256];
 
-	void nullWrite(ushort addr, ubyte val) {}
+    void nullWrite(ushort addr, ubyte val) {}
 
     public:
 
@@ -249,47 +249,47 @@ class AddressDecoder
 
     void installSwitches(SoftSwitchPage switches)
     {
-		readPages[0xC0] = &switches.read;
-		writePages[0xC0] = &switches.write;
+        readPages[0xC0] = &switches.read;
+        writePages[0xC0] = &switches.write;
     }
 
-	ubyte read(ushort addr)
-	{
-		return readPages[addr >> 8](addr);
-	}
+    ubyte read(ushort addr)
+    {
+        return readPages[addr >> 8](addr);
+    }
 
-	void write(ushort addr, ubyte val)
-	{
-		writePages[addr >> 8](addr, val);
-	}
+    void write(ushort addr, ubyte val)
+    {
+        writePages[addr >> 8](addr, val);
+    }
 
     // XXX address read only/write only code
-	void install(Memory block, bool forRead = true, bool forWrite = true)
-	{
-		uint base = block.baseAddress >> 8;
-		uint size = block.blockSize >> 8;
+    void install(Memory block, bool forRead = true, bool forWrite = true)
+    {
+        uint base = block.baseAddress >> 8;
+        uint size = block.blockSize >> 8;
         for (uint pg = base; pg < base + size; ++pg)
         {
             if (pg == 0xC0) continue;
 
-    		if (forRead)
+            if (forRead)
             {
                 readPages[pg] = &block.read;
                 readResponders[pg] = block;
             }
-    		if (forWrite)
+                if (forWrite)
             {
                 writePages[pg] = &block.write;
                 writeResponders[pg] = block;
             }
         }
-	}
+    }
 
     void installNull(uint baseAddress, uint blockSize, bool forRead = true,
             bool forWrite = true)
     {
-		uint base = baseAddress >> 8;
-		uint size = blockSize >> 8;
+        uint base = baseAddress >> 8;
+        uint size = blockSize >> 8;
         for (uint pg = base; pg < base + size; ++pg)
         {
             if (pg == 0xC0) continue;
@@ -306,15 +306,15 @@ class AddressDecoder
         }
     }
 
-	void installRead(Memory block)
-	{
-		install(block, true, false);
-	}
+    void installRead(Memory block)
+    {
+        install(block, true, false);
+    }
 
-	void installWrite(Memory block)
-	{
-		install(block, false, true);
-	}
+    void installWrite(Memory block)
+    {
+        install(block, false, true);
+    }
 
     string memoryReadName(ushort addr)
     {
@@ -338,25 +338,25 @@ class SoftSwitchPage : Memory
 {
     private:
 
-	ReadFunc[256] readSwitches;
+    ReadFunc[256] readSwitches;
     ubyte[256] bitsReturned;
-	WriteFunc[256] writeSwitches;
+    WriteFunc[256] writeSwitches;
 
     ubyte nullRead(ushort addr) { return 0; }
-	void nullWrite(ushort addr, ubyte val) {}
+    void nullWrite(ushort addr, ubyte val) {}
 
     public:
 
     ReadFunc floatingBus;
 
-	this()
-	{
+    this()
+    {
         super(0xC000, 0x0100);
-		for (int addr = 0xC000; addr < 0xC100; ++addr)
-		{
-			writeSwitches[addr & 0xFF] = &nullWrite;
-		}
-	}
+        for (int addr = 0xC000; addr < 0xC100; ++addr)
+        {
+            writeSwitches[addr & 0xFF] = &nullWrite;
+        }
+    }
 
     void setFloatingBus(ReadFunc floatingBus_)
     {
@@ -368,11 +368,11 @@ class SoftSwitchPage : Memory
         }
     }
 
-	void setReadSwitch(ushort addr, ReadFunc read_, ubyte bitsReturned_)
-	{
-		readSwitches[addr - 0xC000] = read_;
+    void setReadSwitch(ushort addr, ReadFunc read_, ubyte bitsReturned_)
+    {
+        readSwitches[addr - 0xC000] = read_;
         bitsReturned[addr - 0xC000] = bitsReturned_;
-	}
+    }
 
     void setR0Switch(ushort addr, ReadFunc read_)
     {
@@ -389,13 +389,13 @@ class SoftSwitchPage : Memory
         setReadSwitch(addr, read_, 0xFF);
     }
 
-	void setWSwitch(ushort addr, WriteFunc write_)
-	{
-		writeSwitches[addr - 0xC000] = write_;
-	}
+    void setWSwitch(ushort addr, WriteFunc write_)
+    {
+        writeSwitches[addr - 0xC000] = write_;
+    }
 
-	final ubyte read(ushort addr)
-	{
+    final ubyte read(ushort addr)
+    {
         ubyte ret = readSwitches[addr - 0xC000](addr);
         ubyte mask = bitsReturned[addr - 0xC000];
         if (mask < 0xFF)
@@ -403,11 +403,10 @@ class SoftSwitchPage : Memory
             ret = (ret & mask) | (floatingBus(addr) & (mask ^ 0xFF));
         }
         return ret;
-	}
+    }
 
-	final void write(ushort addr, ubyte val)
-	{
-		writeSwitches[addr - 0xC000](addr, val);
-	}
+    final void write(ushort addr, ubyte val)
+    {
+        writeSwitches[addr - 0xC000](addr, val);
+    }
 }
-

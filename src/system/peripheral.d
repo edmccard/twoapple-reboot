@@ -84,4 +84,3 @@ class Peripherals_IIe : Peripherals
         cards[6] = diskController;    // XXX
     }
 }
-

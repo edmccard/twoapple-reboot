@@ -68,7 +68,7 @@ class IOU
     {
         io_.annun.ann_1_Off();
     }
-    
+
     void resetAn2()
     {
         io_.annun.ann_2_Off();
@@ -90,7 +90,7 @@ class IOU
     {
         io_.annun.ann_1_On();
     }
-    
+
     void setAn2()
     {
         io_.annun.ann_2_On();
@@ -131,7 +131,7 @@ class IOU
 
 class MMU
 {
-    LanguageCard_IIe himemManager; 
+    LanguageCard_IIe himemManager;
     AddressDecoder decoder;
     AuxiliaryCard auxCard;
     IOMem_IIe ioMem;
@@ -169,7 +169,7 @@ class MMU
                 &mainRom.write);
 
         initMem(mainRam);
-        
+
         initSwitches(switches);
         ioMem.initSwitches(switches);
     }
@@ -404,4 +404,3 @@ class Extended80ColumnCard : AuxiliaryCard
 
     void reset() {}
 }
-

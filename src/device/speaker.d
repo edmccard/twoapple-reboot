@@ -62,7 +62,7 @@ class Speaker
     uint processExtraBuffer(uint elapsed)
     {
         uint newElapsed = elapsed;
-        
+
         if (extraIndex != 0)
         {
             for (; extraIndex < extraBuffer.length; ++extraIndex)
@@ -106,7 +106,7 @@ class Speaker
         uint elapsedSinceToggle = cycle.currentVal() - lastToggleTick;
         lastToggleTick = cycle.currentVal();
         elapsedSinceToggle = processExtraBuffer(elapsedSinceToggle);
-        
+
         uint samples = elapsedSinceToggle / sampleTicks;
         uint extraTicks = elapsedSinceToggle % sampleTicks;
 
@@ -126,7 +126,7 @@ class Speaker
     {
         toggled = true;
         update();
-        sample = ~sample; 
+        sample = ~sample;
     }
 
     void clearBuffer()

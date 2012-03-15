@@ -171,4 +171,3 @@ ushort screenOffset(vState* vSt, hState* hSt, Mode mode)
 
     return offset;
 }
-

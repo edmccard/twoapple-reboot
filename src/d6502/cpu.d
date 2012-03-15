@@ -295,7 +295,7 @@ class Cpu : CpuBase
         programCounter = tryShortcut(false,
                 cast(ushort)(programCounter + offset));
     }
-    
+
     final void addrZeropage()
     {
         primaryAddress = readByteOperand();

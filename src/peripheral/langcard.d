@@ -123,8 +123,8 @@ class HighRam
 {
     AddressDecoder decoder;
 
-	ReadFunc origRead;
-	WriteFunc origWrite;
+    ReadFunc origRead;
+    WriteFunc origWrite;
 
     Memory lowerChunk, upperChunk;
 

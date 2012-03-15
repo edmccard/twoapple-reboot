@@ -137,7 +137,7 @@ class LazEngine : Screen
         uint prevBit, nextBit;
         uint nextBitTest = 0b00010000;
         uint nextBitShift = 4;
-        
+
         ubyte bits = bitmap[bitmapPtr];
 
         if (scanStart == 0)
@@ -213,4 +213,3 @@ class LazEngine : Screen
         }
     }
 }
-

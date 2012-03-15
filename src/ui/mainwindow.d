@@ -342,7 +342,7 @@ class TwoappleFilePicker
 
         fcd.hide();
         fcd.destroy();
-        
+
         host.delay.reset();
         soundCard.resume();
 
