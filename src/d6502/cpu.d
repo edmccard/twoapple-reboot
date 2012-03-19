@@ -352,48 +352,41 @@ class Cpu : CpuBase
 
     void dec_addWithCarry(ubyte val)
     {
-        uint bcdSum = (accumulator & 0x0F) + (val & 0x0F) + flag.carry;
+        int a = accumulator;
+        int al = (a & 0x0F) + (val & 0x0F) + flag.carry;
+        if (al >= 0x0A)
+            al = ((al + 0x06) & 0x0F) + 0x10;
+        a = (a & 0xF0) + (val & 0xF0) + al;
 
-        if (bcdSum >= 10)
-            bcdSum = (bcdSum - 10) | 0x10;
-        bcdSum += (accumulator & 0xF0) + (val & 0xF0);
-
-        flag.negative_ = cast(ubyte)bcdSum;
+        flag.negative_ = flag.zero_ = cast(ubyte)a;
         flag.overflow =
-            (!((accumulator ^ val) & 0x80)) && ((val ^ bcdSum) & 0x80);
+            (!((accumulator ^ val) & 0x80)) && ((val ^ a) & 0x80);
 
-        if (bcdSum > 0x9f)
-            bcdSum += 0x60;
+        if (a >= 0xA0)
+            a = a + 0x60;
 
-        flag.zero_ = cast(ubyte)(accumulator + val + (flag.carry ? 1 : 0));
-        flag.carry = (bcdSum > 0xFF);
-
-        accumulator = cast(ubyte)bcdSum;
+        flag.carry = (a >= 0x100);
+        accumulator = cast(ubyte)a;
     }
 
     void dec_subWithCarry(ubyte val)
     {
-        uint diff = accumulator - val - (flag.carry ? 0 : 1);
+        int a = accumulator;
+        int al = (a & 0x0F) - (val & 0x0F) - !flag.carry;
+        if (al < 0)
+            al = ((al - 0x06) & 0x0F) - 0x10;
+        a = (a & 0xF0) - (val & 0xF0) + al;
+        if (a < 0)
+            a = a - 0x60;
 
+        uint diff = accumulator - val - !flag.carry;
         flag.overflow =
             ((accumulator ^ diff) & 0x80) &&
             ((accumulator ^ val) & 0x80);
-
-        uint al = (accumulator & 0x0F) - (val & 0x0F) -
-            (flag.carry ? 0 : 1);
-        uint ah = (accumulator >> 4) - (val >> 4);
-        if (al & 0x10)
-        {
-            al -= 6;
-            ah--;
-        }
-        if (ah & 0x10)
-            ah -= 6;
-
         flag.carry = (diff < 0x100);
         flag.zero_ = flag.negative_ = cast(ubyte)diff;
 
-        accumulator = cast(ubyte)((ah << 4) + (al & 0x0F));
+        accumulator = cast(ubyte)a;
     }
 
     final void hex_addWithCarry(ubyte val)

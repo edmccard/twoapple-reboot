@@ -54,9 +54,22 @@ class Cmos : Cpu
 
     final override void dec_subWithCarry(ubyte val)
     {
-        super.dec_subWithCarry(val);
+        int a = accumulator;
+        int al = (a & 0x0F) - (val & 0x0F) - !flag.carry;
+        a = a - val - !flag.carry;
+        if (a < 0)
+            a = a - 0x60;
+        if (al < 0)
+            a = a - 0x06;
+
+        uint diff = accumulator - val - !flag.carry;
+        flag.overflow =
+            ((accumulator ^ diff) & 0x80) &&
+            ((accumulator ^ val) & 0x80);
+        flag.carry = (diff < 0x100);
+
         peek(programCounter);
-        flag.zero_ = flag.negative_ = accumulator;
+        flag.zero_ = flag.negative_ = accumulator = cast(ubyte)a;
     }
 
     final void addrZeropageI()
