@@ -358,7 +358,8 @@ class Cpu : CpuBase
             al = ((al + 0x06) & 0x0F) + 0x10;
         a = (a & 0xF0) + (val & 0xF0) + al;
 
-        flag.negative_ = flag.zero_ = cast(ubyte)a;
+        flag.negative_ = cast(ubyte)a;
+        flag.zero_ = cast(ubyte)(accumulator + val + flag.carry);
         flag.overflow =
             (!((accumulator ^ val) & 0x80)) && ((val ^ a) & 0x80);
 
