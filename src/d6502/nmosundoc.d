@@ -25,7 +25,7 @@ module d6502.nmosundoc;
 import d6502.base;
 import d6502.nmosbase;
 
-class NmosUndoc : NmosBase
+class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
 {
     this()
     {
@@ -36,7 +36,7 @@ class NmosUndoc : NmosBase
     final void addrImplied()
     {
         peek(programCounter);
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
     }
 
     final void strange(ubyte val)

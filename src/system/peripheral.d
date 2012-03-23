@@ -25,6 +25,8 @@ module system.peripheral;
 import memory;
 import d6502.base;
 
+private alias d6502.base.CpuBase!(Strict.no, Cumulative.no) CpuBase;
+
 import peripheral.base;
 import peripheral.diskii;
 import peripheral.langcard;

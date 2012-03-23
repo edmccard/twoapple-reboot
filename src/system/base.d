@@ -26,6 +26,8 @@ import timer;
 import memory;
 import d6502.base;
 
+private alias d6502.base.CpuBase!(Strict.no, Cumulative.no) CpuBase;
+
 import ui.sound;
 import ui.inputevents;
 
@@ -195,7 +197,7 @@ class II : System
 
     CpuBase newCpu()
     {
-        return new NmosUndoc();
+        return new NmosUndoc!(Strict.no, Cumulative.no)();
     }
 
     IO newIO()
@@ -254,7 +256,7 @@ class IIe : System
     CpuBase newCpu()
     {
         // XXX this is enhanced
-        return new Cmos();
+        return new Cmos!(Strict.no, Cumulative.no)();
     }
 
     IO newIO()

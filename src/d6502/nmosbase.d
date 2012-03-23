@@ -24,8 +24,10 @@ module d6502.nmosbase;
 
 import d6502.cpu;
 
-class NmosBase : Cpu
+class NmosBase(bool strict, bool cumulative) : Cpu!(strict, cumulative)
 {
+    enum _isNMOS = true;
+
     this()
     {
         super();
@@ -64,6 +66,6 @@ class NmosBase : Cpu
         ushort vector = readWordOperand();
         programCounter = readWord(vector,
                 (vector & 0xFF00) | cast(ubyte)(vector + 1));
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
     }
 }

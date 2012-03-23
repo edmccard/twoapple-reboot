@@ -24,7 +24,7 @@ module d6502.cpu;
 
 import d6502.base;
 
-class Cpu : CpuBase
+class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
 {
     static string InitOpcodes()
     {
@@ -50,8 +50,9 @@ class Cpu : CpuBase
 
     void delegate()[256] opcodes;
     bool continueExecution;
-    version(CycleAccuracy) bool finalCycle;
-    version(CumulativeCycles) int totalCycles;
+    static if (cumulative) int totalCycles;
+    else bool finalCycle;
+
 
     debug(disassemble)
     {
@@ -61,7 +62,7 @@ class Cpu : CpuBase
     final override void run(bool continuous)
     {
         assert ((memoryRead !is null) && (memoryWrite !is null));
-        version(CycleAccuracy) assert (tick !is null);
+        assert (tick !is null);
 
         continueExecution = continuous;
         do
@@ -70,8 +71,8 @@ class Cpu : CpuBase
 
             opcodePC = programCounter;
             opcode = read(programCounter++);
-            version(CycleAccuracy) finalCycle = false;
-            version(CumulativeCycles) totalCycles = 0;
+            static if (cumulative) totalCycles = 0;
+            else finalCycle = false;
 
             /+ TODO: call sync delegate +/
 
@@ -89,7 +90,7 @@ class Cpu : CpuBase
         continueExecution = false;
     }
 
-    version(CycleAccuracy)
+    static if (!cumulative)
     {
         final override bool checkFinalCycle()
         {
@@ -148,18 +149,18 @@ class Cpu : CpuBase
         push(statusByte);
         flag.interrupt = true;
         programCounter = readWord(vector, cast(ushort)(vector + 1));
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
     }
 
     void doReset()
     {
-        version(CycleAccuracy)
-        {
-            tick(); tick();
-        }
-        version(CumulativeCycles)
+        static if (cumulative)
         {
             totalCycles += 2;
+        }
+        else
+        {
+            tick(); tick();
         }
 
         peek(STACK_BASE + stackPointer);
@@ -174,56 +175,56 @@ class Cpu : CpuBase
         signalActive = testSignals();
 
         programCounter = readWord(RESET_VECTOR, RESET_VECTOR + 1);
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
     }
 
     final ubyte read(ushort addr)
     {
-        version(CycleAccuracy) tick();
-        version(CumulativeCycles) ++totalCycles;
+        static if (cumulative) ++totalCycles;
+        else tick();
         return memoryRead(addr);
     }
 
     final void write(ushort addr, ubyte val)
     {
-        version(CycleAccuracy) tick();
-        version(CumulativeCycles) ++totalCycles;
+        static if (cumulative) ++totalCycles;
+        else tick();
         memoryWrite(addr, val);
     }
 
     final void peek(ushort addr)
     {
-        version(CycleAccuracy) tick();
-        version(CumulativeCycles) ++totalCycles;
-        version(StrictMemoryAccess) memoryRead(addr);
+        static if (cumulative) ++totalCycles;
+        else tick();
+        static if (strict) memoryRead(addr);
     }
 
     final void poke(ushort addr, ubyte val)
     {
-        version(CycleAccuracy) tick();
-        version(CumulativeCycles) ++totalCycles;
-        version(StrictMemoryAccess) memoryWrite(addr, val);
+        static if (cumulative) ++totalCycles;
+        else tick();
+        static if (strict) memoryWrite(addr, val);
     }
 
     final ubyte readFinal(ushort addr)
     {
-        version(CycleAccuracy)
+        static if (cumulative) tick(++totalCycles);
+        else
         {
             finalCycle = true;
             tick();
         }
-        version(CumulativeCycles) ticks(++totalCycles);
         return memoryRead(addr);
     }
 
     final void writeFinal(ushort addr, ubyte val)
     {
-        version(CycleAccuracy)
+        static if (cumulative) tick(++totalCycles);
+        else
         {
             finalCycle = true;
             tick();
         }
-        version(CumulativeCycles) ticks(++totalCycles);
         memoryWrite(addr, val);
     }
 
@@ -467,7 +468,7 @@ class Cpu : CpuBase
     static string SimpleOpcode(string name, string opcode, string action)
     {
         string code = "peek(programCounter);\n";
-        version(CumulativeCycles) code ~= "ticks(totalCycles);\n";
+        static if (cumulative)  code ~= "tick(totalCycles);\n";
         code ~= (action == "") ? "" : (action ~ ";");
         return "override void opcode" ~ opcode ~ "()\n{\n" ~ code ~ "\n}\n";
     }
@@ -480,7 +481,7 @@ class Cpu : CpuBase
     static string RegisterOpcode(string name, string opcode, string action)
     {
         string code = "peek(programCounter);\n";
-        version(CumulativeCycles) code ~= "ticks(totalCycles);\n";
+        static if (cumulative) code ~= "tick(totalCycles);\n";
         return "override void opcode" ~ opcode ~ "()\n{\n" ~
             code ~ UpdateNZ(action) ~ "}\n";
     }
@@ -489,7 +490,7 @@ class Cpu : CpuBase
     {
         string code = "readByteOperand();\n" ~
             "if (" ~ action ~ ") addrRelative(cast(byte)operand1);\n";
-        version(CumulativeCycles) code ~= "ticks(totalCycles);\n";
+        static if (cumulative) code ~= "tick(totalCycles);\n";
         return "override void opcode" ~ opcode ~ "()\n{\n" ~ code ~ "}\n";
     }
 
@@ -726,7 +727,7 @@ class Cpu : CpuBase
         pushWord(programCounter);
 
         finalAddress |= ((operand2 = read(programCounter)) << 8);
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
         programCounter = finalAddress;
     }
 
@@ -736,14 +737,14 @@ class Cpu : CpuBase
         peek(programCounter);
         flag.fromByte(pull());
         programCounter = pullWord();
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
     }
 
     /* JMP $$$$ */
     final override void opcode4C()
     {
         programCounter = readWordOperand();
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
     }
 
     /* RTS */
@@ -752,7 +753,7 @@ class Cpu : CpuBase
         peek(programCounter);
         programCounter = pullWord();
         peek(programCounter);
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
         ++programCounter;
     }
 }

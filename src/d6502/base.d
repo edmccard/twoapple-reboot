@@ -22,6 +22,16 @@
 
 module d6502.base;
 
+enum Strict : bool
+{
+    no, yes
+}
+
+enum Cumulative : bool
+{
+    no, yes
+}
+
 string hexByte(int decByte)
 {
     int highNybble = (decByte & 0xF0) >> 4;
@@ -60,8 +70,12 @@ final class StatusRegister
     }
 }
 
-class CpuBase
+class CpuBase(bool strict, bool cumulative)
 {
+    enum _isCpuBase = true;
+    static if (strict) enum _isStrict = true;
+    static if (cumulative) enum _isCumulative = true;
+
     static string AbstractOpcodes()
     {
         string abstractOpcodes;
@@ -127,12 +141,12 @@ class CpuBase
     {
         string delegate(ushort addr) memoryName;
     }
-    version(CycleAccuracy) void delegate() tick;
-    version(CumulativeCycles) void delegate(int cycles) ticks;
+    static if (cumulative) void delegate(int cycles) tick;
+    else  void delegate() tick;
 
     abstract void run(bool continuous);
     abstract void stop();
-    version(CycleAccuracy) abstract bool checkFinalCycle();
+    static if (!cumulative) abstract bool checkFinalCycle();
     abstract void resetLow();
     abstract void nmiLow(bool signalLow);
     abstract void irqLow(bool signalLow);

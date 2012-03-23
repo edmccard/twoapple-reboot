@@ -1,4 +1,4 @@
-COMPILE_OPTS = -c -version=CycleAccuracy -op -Jdata -I$(GTKD)/src \
+COMPILE_OPTS = -c -op -Jdata -I$(GTKD)/src \
 	-I$(GTKD)/srcgl -I$(DERELICT)/import
 
 LINK_OPTS = -L-lpthread -L-lGL -L-ldl -L-lX11 \

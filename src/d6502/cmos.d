@@ -25,8 +25,10 @@ module d6502.cmos;
 import d6502.base;
 import d6502.cpu;
 
-class Cmos : Cpu
+class Cmos(bool strict, bool cumulative) : Cpu!(strict, cumulative)
 {
+    enum _isCMOS = true;
+
     this()
     {
         super();
@@ -80,7 +82,7 @@ class Cmos : Cpu
 
     final void addrNone()
     {
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
     }
 
     final ubyte testSet(ubyte val)
@@ -230,7 +232,7 @@ class Cmos : Cpu
         ushort vector = readWordOperand();
         peek(programCounter);
         programCounter = readWord(vector, cast(ushort)(vector + 1));
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
     }
 
     /* JMP ($$$$,X) */
@@ -240,7 +242,7 @@ class Cmos : Cpu
         peek(programCounter);
         ushort vector = cast(ushort)(baseAddress + xIndex);
         programCounter = readWord(vector, cast(ushort)(vector + 1));
-        version(CumulativeCycles) ticks(totalCycles);
+        static if (cumulative) tick(totalCycles);
     }
 
     /* BIT #$$ */
