@@ -151,7 +151,11 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
         "NOP", [0x1A, 0x3A, 0x5A, 0x7A, 0xDA, 0xFA], "Implied()")),
         ""));
     mixin(Opcode(mixin(ManualAddress(
-        "NOP", [0x0C, 0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC],
+        "NOP", [0x0C],
+            "Absolute()")),
+        ReadNOP()));
+    mixin(Opcode(mixin(ManualAddress(
+        "NOP", [0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC],
             "AbsoluteX(false)")),
         ReadNOP()));
     mixin(Opcode(mixin(ManualAddress(
