@@ -1,2 +1,2 @@
--unittest -I.. -I../src -inline -release -O
+-unittest -I.. -I../src -g
 

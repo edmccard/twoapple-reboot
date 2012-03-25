@@ -213,10 +213,13 @@ if (isCpu!T)
     }
 
     auto cpu = makeCpu!T(mem);
-    cpu.programCounter = 0x8000;
+    setPC(cpu, 0x8000);
     runUntilBRK(cpu);
     if (mem[0x8003])
+    {
+        // TODO: check data block to find out what failed exactly
         throw new TestException("failed decimal mode " ~ T.stringof);
+    }
 }
 
 
