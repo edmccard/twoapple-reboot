@@ -736,7 +736,7 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     {
         peek(programCounter);
         flag.fromByte(pull());
-        programCounter = pullWord();
+        programCounter = readStack() | (readStack() << 8);
         static if (cumulative) tick(totalCycles);
     }
 
