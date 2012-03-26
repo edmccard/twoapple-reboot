@@ -143,11 +143,18 @@ class Cmos(bool strict, bool cumulative) : Cpu!(strict, cumulative)
         "ROR", "Read", [0x66, 0x6E, 0x76, 0x7E])),
         RMW("rotateRight")));
     mixin(Opcode(mixin(Type2Address(
-        "INC", "Read", [0xE6, 0xEE, 0xF6, 0xFE])),
+        "INC", "Read", [0xE6, 0xEE, 0xF6])),
         RMW("increment")));
     mixin(Opcode(mixin(Type2Address(
-        "DEC", "Read", [0xC6, 0xCE, 0xD6, 0xDE])),
+        "DEC", "Read", [0xC6, 0xCE, 0xD6])),
         RMW("decrement")));
+    mixin(Opcode(mixin(Type2Address(
+        "INC", "Write", [0xFE])),
+        RMW("increment")));
+    mixin(Opcode(mixin(Type2Address(
+        "DEC", "Write", [0xDE])),
+        RMW("decrement")));
+
 
     mixin(Opcode(mixin(Type2Address(
         "BIT", "Read", [0x34, 0x3C])),
