@@ -285,7 +285,10 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     final ushort tryShortcut(bool noShortcut, ushort goodAddress)
     {
         badAddress = (baseAddress & 0xFF00) | cast(ubyte)goodAddress;
-        if (noShortcut || (badAddress != goodAddress)) peek(*spuriousAddress);
+        if (badAddress != goodAddress)
+            peek(*spuriousAddress);
+        else if (noShortcut)
+            peek(goodAddress);
         return goodAddress;
     }
 
