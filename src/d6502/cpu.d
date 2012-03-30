@@ -69,10 +69,10 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         {
             if (signalActive) handleSignals();
 
-            opcodePC = programCounter;
-            opcode = read(programCounter++);
             static if (cumulative) totalCycles = 0;
             else finalCycle = false;
+            opcodePC = programCounter;
+            opcode = read(programCounter++);
 
             /+ TODO: call sync delegate +/
 
@@ -240,6 +240,7 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         --stackPointer;
         /+ TODO: call stack overflow delegate +/
     }
+
 
     final void pushWord(ushort val)
     {
@@ -471,8 +472,8 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     static string SimpleOpcode(string name, string opcode, string action)
     {
         string code = "peek(programCounter);\n";
-        static if (cumulative)  code ~= "tick(totalCycles);\n";
         code ~= (action == "") ? "" : (action ~ ";");
+        static if (cumulative)  code ~= "tick(totalCycles);\n";
         return "override void opcode" ~ opcode ~ "()\n{\n" ~ code ~ "\n}\n";
     }
 
@@ -484,9 +485,9 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     static string RegisterOpcode(string name, string opcode, string action)
     {
         string code = "peek(programCounter);\n";
+        code ~= UpdateNZ(action);
         static if (cumulative) code ~= "tick(totalCycles);\n";
-        return "override void opcode" ~ opcode ~ "()\n{\n" ~
-            code ~ UpdateNZ(action) ~ "}\n";
+        return "override void opcode" ~ opcode ~ "()\n{\n" ~ code ~ "}\n";
     }
 
     static string BranchOpcode(string name, string opcode, string action)

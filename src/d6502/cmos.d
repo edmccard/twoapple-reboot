@@ -231,6 +231,7 @@ class Cmos(bool strict, bool cumulative) : Cpu!(strict, cumulative)
         peek(0xFFFF);
         peek(0xFFFF);
         peek(0xFFFF);
+        static if (cumulative) tick(totalCycles);
     }
 
     /* JMP ($$$$) */

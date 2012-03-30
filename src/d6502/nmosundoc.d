@@ -68,6 +68,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     {
         string type = (rw == "Write") ? "true" : "false";
         string modes = "[[\"" ~ name ~ "\", \"" ~ rw ~ "\"], \n";
+        string index = (name[2] == 'X') ? "Y" : "X";
         for (int op = 0; op < opcodes.length; ++op)
         {
             int opcode = opcodes[op];
@@ -87,7 +88,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
                     modes ~= "IndirectY("~ type ~ ")";
                     break;
                 case 5:
-                    modes ~= "ZeropageX()";
+                    modes ~= "Zeropage" ~ index ~ "()";
                     break;
                 case 7:
                     modes ~= "AbsoluteY(" ~ type ~ ")";
@@ -183,7 +184,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
         "LAX", "Read", [0xA3, 0xA7, 0xAF, 0xB3, 0xB7, 0xBF])),
         Read("accumulator = xIndex =")));
     mixin(Opcode(mixin(UndocAddress(
-        "SAX", "Write", [0x83, 0x87, 0x8F, 0x97])),
+        "SAX", "Write", [0x83, 0x87, 0x97, 0x8F])),
         Write("accumulator & xIndex")));
 
     mixin(Opcode(mixin(Type1Address(
