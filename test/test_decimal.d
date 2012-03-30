@@ -246,3 +246,21 @@ unittest
     writeln("Testing decimal mode, CMOS(Strict.yes, Cumulative.yes)");
     testDecimalMode!(CPU!("65C02", true, true))();
 }
+
+
+version(Benchmark)
+{
+    import std.datetime, std.stdio;
+    void f0()
+    {
+        testDecimalMode!(CPU!("65C02", false, false))();
+    }
+
+    void main()
+    {
+    //    auto milliExpected = (61886766.0 / 1020484.0) * 1000;
+        auto milliExpected = (64508206.0 / 1020484.0) * 1000;
+        auto r = benchmark!(f0)(1);
+        writeln(milliExpected / r[0].to!("msecs", int));
+    }
+}

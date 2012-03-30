@@ -1,0 +1,2 @@
+-version=Benchmark -inline -release -O -I.. -I../src -g
+
