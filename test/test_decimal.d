@@ -212,7 +212,8 @@ if (isCpu!T)
         mem.write(0x8055, 0x84);
     }
 
-    auto cpu = makeCpu!T(mem);
+    auto cpu = new T();
+    connectCpu(cpu, mem);
     setPC(cpu, 0x8000);
     runUntilBRK(cpu);
     if (mem[0x8003])
@@ -226,24 +227,24 @@ if (isCpu!T)
 unittest
 {
     writeln("Testing decimal mode, NMOS(Strict.no, Cumulative.no)");
-    testDecimalMode!(NmosUndoc!(false, false))();
+    testDecimalMode!(CPU!("6502", false, false))();
     writeln("Testing decimal mode, CMOS(Strict.no, Cumulative.no)");
-    testDecimalMode!(Cmos!(false, false))();
+    testDecimalMode!(CPU!("65C02", false, false))();
 
 /+
     writeln("Testing decimal mode, NMOS(Strict.no, Cumulative.yes)");
-    testDecimalMode!(NmosUndoc!(false, true))();
+    testDecimalMode!(CPU!("6502", false, true))();
     writeln("Testing decimal mode, CMOS(Strict.no, Cumulative.yes)");
-    testDecimalMode!(Cmos!(false, true))();
+    testDecimalMode!(CPU!("65C02", false, true))();
 
     writeln("Testing decimal mode, NMOS(Strict.yes, Cumulative.no)");
-    testDecimalMode!(NmosUndoc!(true, false))();
+    testDecimalMode!(CPU!("6502", true, false))();
     writeln("Testing decimal mode, CMOS(Strict.yes, Cumulative.no)");
-    testDecimalMode!(Cmos!(true, false))();
+    testDecimalMode!(CPU!("65C02", true, false))();
 
     writeln("Testing decimal mode, NMOS(Strict.yes, Cumulative.yes)");
-    testDecimalMode!(NmosUndoc!(true, true))();
+    testDecimalMode!(CPU!("6502", true, true))();
     writeln("Testing decimal mode, CMOS(Strict.yes, Cumulative.yes)");
-    testDecimalMode!(Cmos!(true, true))();
+    testDecimalMode!(CPU!("65C02", true, true))();
 +/
 }
