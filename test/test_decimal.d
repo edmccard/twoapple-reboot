@@ -231,7 +231,6 @@ unittest
     writeln("Testing decimal mode, CMOS(Strict.no, Cumulative.no)");
     testDecimalMode!(CPU!("65C02", false, false))();
 
-/+
     writeln("Testing decimal mode, NMOS(Strict.no, Cumulative.yes)");
     testDecimalMode!(CPU!("6502", false, true))();
     writeln("Testing decimal mode, CMOS(Strict.no, Cumulative.yes)");
@@ -246,5 +245,4 @@ unittest
     testDecimalMode!(CPU!("6502", true, true))();
     writeln("Testing decimal mode, CMOS(Strict.yes, Cumulative.yes)");
     testDecimalMode!(CPU!("65C02", true, true))();
-+/
 }
