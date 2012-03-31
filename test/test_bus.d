@@ -1,7 +1,10 @@
-module test_bus;
+module test.test_bus;
 
-import std.algorithm, std.array, std.conv, std.exception, std.string;
-import test.base;
+
+import std.algorithm, std.array, std.conv, std.exception, std.stdio,
+       std.string;
+
+import test.base, test.cpu, test.opcodes;
 
 
 T[] If(alias cond, T)(T[] actions)
@@ -12,11 +15,6 @@ T[] If(alias cond, T)(T[] actions)
         return [];
 }
 
-
-template timesetup_t(T)
-{
-    alias Bus[] function(T, ref TestMemory, out int) timesetup_t;
-}
 
 /// Bus access pattern for register opcodes.
 auto accesses_reg(T)(T cpu, ref TestMemory mem, out int cycles)
@@ -561,89 +559,7 @@ if (isCpu!T && isCMOS!T)
 }
 
 
-enum Action : ushort { NONE, READ, WRITE }
-
-struct Bus
-{
-    Action action;
-    ushort addr;
-
-    this(Action action, int addr)
-    {
-        this.action = action; this.addr = cast(ushort)addr;
-    }
-
-    string toString() const
-    {
-        return format("Bus(%s, %0.4X)", to!string(action), addr);
-    }
-}
-
-/*
- *
- */
-const(Bus[]) recordBus(T)(T cpu, int actions = 8)
-if (isCpu!T)
-{
-    auto record = new Bus[actions];
-    int c;
-
-    enforce(cpu.memoryRead !is null && cpu.memoryWrite !is null);
-    auto wrappedRead = cpu.memoryRead;
-    auto wrappedWrite = cpu.memoryWrite;
-
-    ubyte read(ushort addr)
-    {
-        if (c == actions)
-            throw new TestException(
-                format("cannot record more than %d actions", actions));
-        record[c++] = Bus(Action.READ, addr);
-        return wrappedRead(addr);
-    }
-
-    void write(ushort addr, ubyte val)
-    {
-        if (c == actions)
-            throw new TestException(
-                format("cannot record more than %d actions", actions));
-        record[c++] = Bus(Action.WRITE, addr);
-        wrappedWrite(addr, val);
-    }
-
-    cpu.memoryRead = &read;
-    cpu.memoryWrite = &write;
-
-    return record;
-}
-
-auto recordCycles(T)(T cpu)
-if (isCpu!T)
-{
-    auto cycles = new int;
-    auto wrappedTick = cpu.tick;
-
-    static if (isCumulative!T)
-    {
-        void tick(int cyc)
-        {
-            (*cycles) += cyc;
-            wrappedTick(cyc);
-        }
-    }
-    else
-    {
-        void tick()
-        {
-            (*cycles)++;
-            wrappedTick();
-        }
-    }
-    cpu.tick = &tick;
-
-    return constRef(cycles);
-}
-
-
+// Associates opcodes with expected access patterns.
 string getExpected(T)()
 {
     string[] tmp = new string[256];
@@ -689,8 +605,14 @@ string getExpected(T)()
     return "final switch (opcode)\n{\n" ~ join(tmp, "\n") ~ "\n}";
 }
 
-import std.stdio;
 
+template timesetup_t(T)
+{
+    alias Bus[] function(T, ref TestMemory, out int) timesetup_t;
+}
+
+
+// Tests the bus access patterns and cycles taken for a given opcode.
 void test_opcode_timing(T)(ubyte opcode)
 {
     addrsetup_t!T[] function(ubyte) setups1;
@@ -709,7 +631,7 @@ void test_opcode_timing(T)(ubyte opcode)
         auto cpu = new T();
         auto block1 = func1(cpu, addr, name1);
         auto mem = TestMemory(block1);
-        connectCpu(cpu, mem);
+        connectMem(cpu, mem);
         auto exp = expected(cpu, mem, cycles);
         exp = exp ~ new Bus[8 - exp.length];
         auto actual = recordBus(cpu);
@@ -748,8 +670,6 @@ void test_opcode_timing(T)(ubyte opcode)
 
 unittest
 {
-    import std.stdio;
-
     alias CPU!("65C02", false, false) T1;
     for (int op = 0x00; op < 0x100; op++)
     test_opcode_timing!T1(cast(ubyte)op);

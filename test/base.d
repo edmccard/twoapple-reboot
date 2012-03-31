@@ -1,13 +1,9 @@
 module test.base;
 
 
-import std.algorithm, std.conv, std.exception, std.random, std.range,
-       std.string, std.traits;
+import std.algorithm, std.conv, std.exception, std.range, std.string;
 
-public import test.wrap6502;
-
-
-class TestException : Exception { this(string msg) { super(msg); } }
+import test.cpu, test.opcodes;
 
 
 /*
@@ -29,10 +25,10 @@ public:
      * Blocks.
      *
      * The blocks do not need to be contiguous, or ordered by their
-     * base address, but note that the base address of the 3-page
-     * "main memory" will be that of the first block with a base
-     * address greater than 0x01FF (there must be at least one such
-     * block).
+     * base address, but note that the base of the 3-page "main
+     * memory" will be the start of the page that contains the first
+     * block with a base address greater than 0x01FF (there must be at
+     * least one such block).
      */
     this(const Block[] blocks ...)
     {
@@ -53,8 +49,8 @@ public:
                     if (base > 0xFD00)
                         data2_base = 0xFD00;
                     else
-                        data2_base = base;
-                    data2_max = base + 0x300;
+                        data2_base = base & 0xFF00;
+                    data2_max = data2_base + 0x300;
                 }
                 enforce(base + data.length <= data2_max,
                         format("Address  out of bounds %0.4x", base));
@@ -116,477 +112,6 @@ struct Block
             ret ~= format(" (%d more bytes)", data.length - max);
         return "[" ~ ret ~ "]";
     }
-}
-
-
-struct Ref(T)
-if (isPointer!T)
-{
-    private const(T) data;
-    this(T ptr) { data = ptr; }
-    auto deref() { return *data; }
-    alias deref this;
-
-    string toString () const { return format("%s", *data); }
-}
-
-auto constRef(T)(T ptr)
-if (isPointer!T)
-{
-    return Ref!(const(T))(ptr);
-}
-
-
-enum Flag : ubyte
-{
-    C = 0x01,
-    Z = 0x02,
-    I = 0x04,
-    D = 0x08,
-    V = 0x40,
-    N = 0x80
-}
-
-void updateFlag(T)(T cpu, Flag f, bool val)
-if (isCpu!T)
-{
-    if (val)
-        setFlag(cpu, f);
-    else
-        clearFlag(cpu, f);
-}
-
-
-void expectBranch(T)(T cpu, ubyte opcode)
-if (isCpu!T)
-{
-    switch (opcode)
-    {
-        case /*BPL*/ 0x10: clearFlag(cpu, Flag.N); break;
-        case /*BMI*/ 0x30: setFlag(cpu, Flag.N); break;
-        case /*BVC*/ 0x50: clearFlag(cpu, Flag.V); break;
-        case /*BVS*/ 0x70: setFlag(cpu, Flag.V); break;
-        case /*BCC*/ 0x90: clearFlag(cpu, Flag.C); break;
-        case /*BCS*/ 0xB0: setFlag(cpu, Flag.C); break;
-        case /*BNE*/ 0xD0: clearFlag(cpu, Flag.Z); break;
-        case /*BEQ*/ 0xF0: setFlag(cpu, Flag.Z); break;
-        default:
-            if (isCMOS!T) { if (opcode == /*BRA*/ 0x80) break; }
-            enforce(0, format("not a branching opcpde %0.2X", opcode));
-    }
-}
-
-bool wouldBranch(T)(T cpu, ubyte opcode)
-if (isCpu!T)
-{
-    switch (opcode)
-    {
-        case /*BPL*/ 0x10: return !getFlag(cpu, Flag.N);
-        case /*BMI*/ 0x30: return getFlag(cpu, Flag.N);
-        case /*BVC*/ 0x50: return !getFlag(cpu, Flag.V);
-        case /*BVS*/ 0x70: return getFlag(cpu, Flag.V);
-        case /*BCC*/ 0x90: return !getFlag(cpu, Flag.C);
-        case /*BCS*/ 0xB0: return getFlag(cpu, Flag.C);
-        case /*BNE*/ 0xD0: return !getFlag(cpu, Flag.Z);
-        case /*BEQ*/ 0xF0: return getFlag(cpu, Flag.Z);
-        default:
-            if (isCMOS!T) { if (opcode == /*BRA*/ 0x80) return true; }
-            assert(0, format("not a branching opcpde %0.2X", opcode));
-    }
-}
-
-void expectNoBranch(T)(T cpu, ubyte opcode)
-{
-    switch (opcode)
-    {
-        case /*BPL*/ 0x10: setFlag(cpu, Flag.N); break;
-        case /*BMI*/ 0x30: clearFlag(cpu, Flag.N); break;
-        case /*BVC*/ 0x50: setFlag(cpu, Flag.V); break;
-        case /*BVS*/ 0x70: clearFlag(cpu, Flag.V); break;
-        case /*BCC*/ 0x90: setFlag(cpu, Flag.C); break;
-        case /*BCS*/ 0xB0: clearFlag(cpu, Flag.C); break;
-        case /*BNE*/ 0xD0: setFlag(cpu, Flag.Z); break;
-        case /*BEQ*/ 0xF0: clearFlag(cpu, Flag.Z); break;
-        default:
-            if (isCMOS!T)
-                enforce(opcode != 0x80, "BRA can never not branch");
-            enforce(0, format("not a branching opcpde %0.2X", opcode));
-    }
-}
-
-
-ushort address(ubyte l, ubyte h)
-{
-    return cast(ushort)((h << 8) | l);
-}
-
-ushort pageWrapAdd(ushort base, int offset)
-{
-    return (base & 0xFF00) + cast(ubyte)((base & 0xFF) + offset);
-}
-
-ushort pageCrossAdd(ushort base, int offset)
-{
-    return cast(ushort)(base + offset);
-}
-
-
-// A random value to use for "uninitialized" memory.
-ubyte XX()
-{
-    return cast(ubyte)uniform(0, 256);
-}
-
-// A number different from some other number.
-ubyte notXX(ubyte val)
-{
-    return cast(ubyte)(val ^ 0xAA);
-}
-
-
-// 2-cycle opcodes which neither read nor write.
-template REG_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum REG_OPS = cast(ubyte[])
-            x"0A 18 1A 2A 38 3A 4A 58 5A 6A 78 7A 8A 88 98 9A
-              A8 AA B8 BA C8 CA D8 DA E8 EA F8 FA";
-    else
-        enum REG_OPS = cast(ubyte[])
-            x"0A 18 1A 2A 38 3A 4A 58 6A 78 8A 88 98 9A
-              A8 AA B8 BA C8 CA D8 E8 EA F8";
-}
-
-
-// Opcodes which push to the stack.
-template PUSH_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum PUSH_OPS = cast(ubyte[])x"08 48";
-    else
-        enum PUSH_OPS = cast(ubyte[])x"08 48 5A DA";
-}
-
-
-// Opcodes which pull from the stack.
-template PULL_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum PULL_OPS = cast(ubyte[])x"28 68";
-    else
-        enum PULL_OPS = cast(ubyte[])x"28 68 7A FA";
-}
-
-
-// Relative branch opcodes.
-template BRANCH_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum BRANCH_OPS = cast(ubyte[])x"10 30 50 70    90 B0 D0 F0";
-    else
-        enum BRANCH_OPS = cast(ubyte[])x"10 30 50 70 80 90 B0 D0 F0";
-}
-
-
-// Write-only opcodes.
-template WRITE_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum WRITE_OPS = cast(ubyte[])x"81 83 84 85 86 87       8C 8D 8E 8F
-                                        91 93 94 95 96 97 99 9B 9C 9D 9E 9F";
-    else
-        enum WRITE_OPS = cast(ubyte[])x"64 74 81 84 85 86 8C 8D 8E
-                                        91 92 94 95 96 99 9C 9D 9E";
-}
-
-
-// Read-only opcodes (excluding ADC/SBC).
-template READ_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum READ_OPS = cast(ubyte[])
-            x"01 04 05 09 0B 0C 0D 11 14 15 19 1C 1D
-              21 24 25 29 2B 2C 2D 31 34 35 39 3C 3D
-              41 44 45 49 4B 4D 51 54 55 59 5C 5D
-              64 6B 74 7C 82 89 8B
-              A0 A1 A2 A3 A4 A5 A6 A7 A9 AB AC AD AE AF
-              B1 B3 B4 B5 B6 B7 B9 BB BC BD BE BF
-              C0 C1 C2 C4 C5 C9 CB CC CD D1 D4 D5 D9 DC DD
-              E0 E2 E4 EC F4 FC";
-    else
-        enum READ_OPS = cast(ubyte[])
-            x"01 02 05 09 0D 11 12 15 19 1D
-              21 22 24 25 29 2C 2D 31 32 34 35 39 3C 3D
-              41 42 44 45 49 4D 51 52 54 55 59 5D 62 82 89
-              A0 A1 A2 A4 A5 A6 A9 AC AD AE
-              B2 B1 B4 B5 B6 B9 BC BD BE
-              C0 C1 C2 C4 C5 C9 CC CD D1 D2 D4 D5 D9 DC DD
-              E0 E2 E4 EC F4 FC";
-}
-
-
-// Opcodes affected by decimal mode (ADC/SBC).
-template BCD_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum BCD_OPS = cast(ubyte[])x"61 65 69 6B 6D 71 75 79 7D
-                                      E1 E5 E9 EB ED F1 F5 F9 FD";
-    else
-        enum BCD_OPS = cast(ubyte[])x"61 65 69 6D 71 72 75 79 7D
-                                      E1 E5 E9 ED F1 F2 F5 F9 FD";
-}
-
-
-// Opcodes which both read and write.
-template RMW_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum RMW_OPS = cast(ubyte[])
-            x"03 06 07 0E 0F 13 16 17 1B 1E 1F
-              23 26 27 2E 2F 33 36 37 3B 3E 3F
-              43 46 47 4E 4F 53 56 57 5B 5E 5F
-              63 66 67 6E 6F 73 76 77 7B 7E 7F
-              C3 C6 C7 CE CF D3 D6 D7 DB DE DF
-              E3 E6 E7 EE EF F3 F6 F7 FB FE FF";
-    else
-        enum RMW_OPS = cast(ubyte[])
-            x"04 06 0C 0E 14 16 1C 1E 26 2E 36 3E 46 4E 56 5E
-                 66    6E    76    7E C6 CE D6 DE E6 EE F6 FE";
-}
-
-
-// Opcodes with immediate address mode.
-template IMM_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum IMM_OPS = cast(ubyte[])x"09 0B 29 2B 49 4B 69 6B
-                                      80 82 89 8B A0 A2 A9 AB
-                                      C0 C2 C9 CB E0 E2 E9 EB";
-    else
-        enum IMM_OPS = cast(ubyte[])x"02 09 22 29 42 49 62 69 82
-                                      89 A0 A2 A9 C0 C2 C9 E0 E2 E9";
-}
-
-
-// Opcodes with zeropage address mode.
-template ZPG_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum ZPG_OPS = cast(ubyte[])x"04 05 06 07 24 25 26 27
-                                      44 45 46 47 64 65 66 67
-                                      84 85 86 87 A4 A5 A6 A7
-                                      C4 C5 C6 C7 E4 E5 E6 E7";
-    else
-        enum ZPG_OPS = cast(ubyte[])x"04 05 06 14 24 25 26 44 45 46 64 65 66
-                                      84 85 86 A4 A5 A6 C4 C5 C6 E4 E5 E6";
-}
-
-
-// Opcodes with zeropage,x address mode.
-template ZPX_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum ZPX_OPS = cast(ubyte[])x"14 15 16 17 34 35 36 37
-                                      54 55 56 57 74 75 76 77
-                                      94 95 B4 B5 D4 D5 D6 D7
-                                      F4 F5 F6 F7";
-    else
-        enum ZPX_OPS = cast(ubyte[])x"15 16 34 35 36 54 55 56 74 75 76
-                                      94 95 B4 B5 D4 D5 D6 F4 F5 F6";
-}
-
-
-// Opcodes with zeropage,y address mode.
-template ZPY_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum ZPY_OPS = cast(ubyte[])x"96 97 B6 B7";
-    else
-        enum ZPY_OPS = cast(ubyte[])x"96 B6";
-}
-
-
-// Opcodes with absolute address mode.
-template ABS_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum ABS_OPS = cast(ubyte[])x"0C 0D 0E 0F 2C 2D 2E 2F
-                                      4C 4D 4E 4F    6D 6E 6F
-                                      8C 8D 8E 8F AC AD AE AF
-                                      CC CD CE CF EC ED EE EF";
-    else
-        enum ABS_OPS = cast(ubyte[])x"0C 0D 0E 1C 2C 2D 2E 4C 4D 4E    6D 6E
-                                      8C 8D 8E 9C AC AD AE CC CD CE EC ED EE";
-}
-
-
-// Opcodes with absolute,x address mode.
-template ABX_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum ABX_OPS = cast(ubyte[])x"1C 1D 1E 1F 3C 3D 3E 3F
-                                      5C 5D 5E 5F 7C 7D 7E 7F
-                                      9C 9D BC BD DC DD DE DF
-                                      FC FD FE FF";
-    else
-        enum ABX_OPS = cast(ubyte[])x"1D 1E 3C 3D 3E 5D 5E 7D 7E
-                                      9D 9E BC BD DC DD DE FC FD FE";
-}
-
-
-// Opcodes with absolute,y address mode.
-template ABY_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum ABY_OPS = cast(ubyte[])x"19 1B 39 3B 59 5B 79 7B
-                                      99 9B 9E 9F B9 BB BE BF
-                                      D9 DB F9 FB";
-    else
-        enum ABY_OPS = cast(ubyte[])x"19 39 59 79 99 B9 BE D9 F9";
-}
-
-
-// Opcodes with indirect zeropage,x address mode.
-template IZX_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum IZX_OPS = cast(ubyte[])x"01 03 21 23 41 43 61 63
-                                      81 83 A1 A3 C1 C3 E1 E3";
-    else
-        enum IZX_OPS = cast(ubyte[])x"01 21 41 61 81 A1 C1 E1";
-}
-
-
-// Opcodes with indirect zeropage,y address mode.
-template IZY_OPS(T)
-if (isCpu!T)
-{
-    static if (isNMOS!T)
-        enum IZY_OPS = cast(ubyte[])x"11 13 31 33 51 53 71 73
-                                      91 93 B1 B3 D1 D3 F1 F3";
-    else
-        enum IZY_OPS = cast(ubyte[])x"11 31 51 71 91 B1 D1 F1";
-}
-
-
-// Opcodes with indirect zeropage address mode.
-template ZPI_OPS(T)
-if (isCpu!T && isCMOS!T)
-{
-    enum ZPI_OPS = cast(ubyte[])x"12 32 52 72 92 B2 D2 F2";
-}
-
-
-// 1-cycle NOPS.
-template NOP1_OPS(T)
-if (isCpu!T && isCMOS!T)
-{
-    enum NOP1_OPS = cast(ubyte[])
-        x"03 13 23 33 43 53 63 73 83 93 A3 B3 C3 D3 E3 F3
-          07 17 27 37 47 57 67 77 87 97 A7 B7 C7 D7 E7 F7
-          0B 1B 2B 3B 4B 5B 6B 7B 8B 9B AB BB CB DB EB FB
-          0F 1F 2F 3F 4F 5F 6F 7F 8F 9F AF BF CF DF EF FF";
-}
-
-
-// NMOS HLT opcodes.
-template HLT_OPS(T)
-if (isCpu!T && isNMOS!T)
-{
-    enum HLT_OPS = cast(ubyte[])x"02 12 22 32 42 52 62 72 92 B2 D2 F2";
-}
-
-
-// Associates opcodes with test setup functions.
-string getMemSetup(T)()
-if (isCpu!T)
-{
-    string[] tmp1 = new string[256], tmp2 = new string[256];
-    tmp2[] = "        setups2 = &setup_data_none!T;\n";
-
-    void call_addr(const(ubyte[]) list, string fname)
-    {
-        foreach(op; list)
-        {
-            tmp1[op] =
-                "        setups1 = &setup_address_" ~ fname ~ "!T;\n";
-        }
-    }
-
-    void call_data(const(ubyte[]) list, string fname)
-    {
-        foreach(op; list)
-        {
-            tmp2[op] =
-                "        setups2 = &setup_data_" ~ fname ~ "!T;\n";
-        }
-    }
-
-
-    call_addr(IMM_OPS!T, "imm");
-    call_addr(ZPG_OPS!T, "zpg");
-    call_addr(ZPX_OPS!T, "zpxy");
-    call_addr(ZPY_OPS!T, "zpxy");
-    call_addr(ABS_OPS!T, "abs");
-    call_addr(ABX_OPS!T, "abxy");
-    call_addr(ABY_OPS!T, "abxy");
-    call_addr(IZX_OPS!T, "izx");
-    call_addr(IZY_OPS!T, "izy");
-    call_addr(REG_OPS!T, "reg");
-    call_addr(PUSH_OPS!T, "push");
-    call_addr(PULL_OPS!T, "pull");
-    call_addr(BRANCH_OPS!T, "branch");
-    call_addr([0x00], "op_BRK");
-    call_addr([0x20], "op_JSR");
-    call_addr([0x40, 0x60], "op_RTx");
-    call_addr([0x4C], "op_JMP_abs");
-    call_addr([0x6C], "op_JMP_ind");
-
-    call_data([0x08], "op_PHP");
-    call_data([0x28], "op_PLP");
-    call_data([0x00], "op_BRK");
-    call_data([0x40], "op_RTI");
-    static if (isNMOS!T)
-    {
-        call_addr(HLT_OPS!T, "none");
-
-        call_data([0x48], "push");
-        call_data([0x68], "pull");
-    }
-    else
-    {
-        call_addr(ZPI_OPS!T, "zpi");
-        call_addr(NOP1_OPS!T, "reg");
-        call_addr([0x5C], "op_5C");
-        call_addr([0x7C], "op_JMP_inx");
-
-        call_data([0x48, 0x5A, 0xDA], "push");
-        call_data([0x68, 0x7A, 0xFA], "pull");
-    }
-
-    auto ret = "final switch (opcode)\n{\n";
-    for (auto i = 0; i < 256; i++)
-    {
-        ret ~= "    case 0x" ~ to!string(i, 16) ~ ":\n" ~
-               tmp1[i] ~ tmp2[i] ~ "        break;\n";
-    }
-    return ret ~ "\n}";
 }
 
 
@@ -922,8 +447,7 @@ if (isCpu!T)
         if (name == "forward-px")
         {
             setPC(cpu, 0x1081);
-            return [Block(0x1000, []), // for wrong-page read
-                    Block(getPC(cpu), [opcode, values[count++]])];
+            return [Block(getPC(cpu), [opcode, values[count++]])];
         }
         else
         {
@@ -1203,6 +727,149 @@ if (isCpu!T)
     return cast(datasetup_t!T[])[];
 }
 
+auto setup_data_dec_reg(T)(ubyte opcode)
+if (isCpu!T)
+{
+    /* XXX DEX, DEY, on CMOS DEC A
+     * set reg to:
+     * 0x01 (sets z) 0x00 (sets N) 0x80 (clears both)
+     */
+}
+
+auto setup_data_dec(T)(ubyte opcode)
+if (isCpu!T)
+{
+    // XXX all addressing modes of DEC
+    // set addr to
+    // 0x01 (sets z) 0x00 (sets N) 0x80 (clears both)
+}
+
+auto setup_data_inc_reg(T)(ubyte opcode)
+if (isCpu!T)
+{
+    // XXX INX, INY, on CMOS INC A
+    // set reg to:
+    // 0xFF (sets Z) 0x7F (sets N) 0x00 (clears both)
+}
+
+auto setup_data_inc(T)(ubyte opcode)
+if (isCpu!T)
+{
+    // XXX all addressing modes of INC
+    // set addr to:
+    // 0xFF (sets Z) 0x7F (sets N) 0x00 (clears both)
+}
+
+auto setup_data_rol(T)(ubyte opcode)
+if (isCpu!T)
+{
+    // XXX all addressing modes of ROL
+    // if 0x2A, set A else set addr
+    // 0 carry set -> 1 (zero clear, carry clear, neg clear)
+    // 0 carry clear -> 0 (zero set, carry clear, neg clear)
+    // 0x80 carry set -> 1 (carry set, zero clear, neg clear)
+    // 0x80 carry clear -> 0 (carry set, zero set, neg clear)
+    // 0x40 carry set -> 0x81 (carry clear, zero clear, neg set)
+    // 0x40 carry clear -> 0x80 (carry clear, zero clear, neg set)
+}
+
+auto setup_data_asl(T)(ubyte opcode)
+if (isCpu!T)
+{
+    // XXX all addressing modes of ASL
+    // if 0x0A, set A else set addr
+    // each starting carry set, carry clear
+    // 0 -> 0
+    // 0x80 -> 0 carry set
+    // 0x40 -> 0x80
+    // 0x01 -> 0x02
+}
+
+
+// Associates opcodes with test setup functions.
+string getMemSetup(T)()
+if (isCpu!T)
+{
+    string[] tmp1 = new string[256], tmp2 = new string[256];
+    tmp2[] = "        setups2 = &setup_data_none!T;\n";
+
+    void call_addr(const(ubyte[]) list, string fname)
+    {
+        foreach(op; list)
+        {
+            tmp1[op] =
+                "        setups1 = &setup_address_" ~ fname ~ "!T;\n";
+        }
+    }
+
+    void call_data(const(ubyte[]) list, string fname)
+    {
+        foreach(op; list)
+        {
+            tmp2[op] =
+                "        setups2 = &setup_data_" ~ fname ~ "!T;\n";
+        }
+    }
+
+
+    call_addr(IMM_OPS!T, "imm");
+    call_addr(ZPG_OPS!T, "zpg");
+    call_addr(ZPX_OPS!T, "zpxy");
+    call_addr(ZPY_OPS!T, "zpxy");
+    call_addr(ABS_OPS!T, "abs");
+    call_addr(ABX_OPS!T, "abxy");
+    call_addr(ABY_OPS!T, "abxy");
+    call_addr(IZX_OPS!T, "izx");
+    call_addr(IZY_OPS!T, "izy");
+    call_addr(REG_OPS!T, "reg");
+    call_addr(PUSH_OPS!T, "push");
+    call_addr(PULL_OPS!T, "pull");
+    call_addr(BRANCH_OPS!T, "branch"); // XXX test
+    call_addr([0x00], "op_BRK");
+    call_addr([0x20], "op_JSR"); // XXX test
+    call_addr([0x40, 0x60], "op_RTx"); // XXX 0x60 test
+    call_addr([0x4C], "op_JMP_abs"); // XXX test
+    call_addr([0x6C], "op_JMP_ind"); // XXX test
+
+    call_data([0x08], "op_PHP");
+    call_data([0x28], "op_PLP");
+    call_data([0x00], "op_BRK");
+    call_data([0x40], "op_RTI");
+//    call_data(OPS_DEC_REG!T, "dec_reg");
+//    call_data(OPS_DEC!T, "dec");
+//    call_data(OPS_INC_REG!T, "inc_reg");
+//    call_data(OPS_INC!T, "inc");
+//    call_data(OPS_ROL!T, "rol");
+//    call_data(OPS_ASL!T, "asl");
+
+    static if (isNMOS!T)
+    {
+        call_addr(HLT_OPS!T, "none");
+
+        call_data([0x48], "push");
+        call_data([0x68], "pull");
+    }
+    else
+    {
+        call_addr(ZPI_OPS!T, "zpi");
+        call_addr(NOP1_OPS!T, "reg"); /// XXX nop test 1 cycles
+        call_addr([0x5C], "op_5C"); /// XXX test
+        call_addr([0x7C], "op_JMP_inx"); /// XXX test
+
+        call_data([0x48, 0x5A, 0xDA], "push");
+        call_data([0x68, 0x7A, 0xFA], "pull");
+    }
+
+    auto ret = "final switch (opcode)\n{\n";
+    for (auto i = 0; i < 256; i++)
+    {
+        ret ~= "    case 0x" ~ to!string(i, 16) ~ ":\n" ~
+               tmp1[i] ~ tmp2[i] ~ "        break;\n";
+    }
+    return ret ~ "\n}";
+}
+
+
 unittest
 {
 /+
@@ -1229,6 +896,6 @@ unittest
         }
     }
 +/
-//    enum foo = getMemSetup!(Cmos!(false, false))();
+//    enum foo = getMemSetup!(NmosUndoc!(false, false))();
 //    writeln(foo);
 }

@@ -1,7 +1,9 @@
 module test.test_decimal;
 
+
 import std.stdio;
-import test.base;
+
+import test.base, test.cpu;
 
 
 void testDecimalMode(T)()
@@ -213,7 +215,7 @@ if (isCpu!T)
     }
 
     auto cpu = new T();
-    connectCpu(cpu, mem);
+    connectMem(cpu, mem);
     setPC(cpu, 0x8000);
     runUntilBRK(cpu);
     if (mem[0x8003])
