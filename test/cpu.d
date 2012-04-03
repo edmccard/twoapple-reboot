@@ -58,6 +58,19 @@ template CPU(string arch, bool strict, bool cumulative)
 }
 
 
+auto makeCpu(T)(CpuInfo info)
+if (isCpu!T)
+{
+    auto cpu = new T();
+    cpu.programCounter = info.PC;
+    cpu.stackPointer = info.SP;
+    cpu.flag.fromByte(info.S);
+    cpu.accumulator = info.A;
+    cpu.xIndex = info.X;
+    cpu.yIndex = info.Y;
+    return cpu;
+}
+
 // Connects test memory to a cpu.
 void connectMem(T, S)(T cpu, ref S mem)
 if (isCpu!T)
@@ -222,6 +235,33 @@ if (isCpu!T)
 }
 
 
+struct CpuInfo
+{
+    ushort PC;
+    ubyte SP = 0xFF;
+    ubyte A, X, Y;
+    ubyte S = 0x30;
+
+    string toString() const
+    {
+        return format("PC %0.4X SP %0.2X S %0.2X A %0.2X X %0.2X Y %0.2X",
+                      PC, SP, S, A, X, Y);
+    }
+
+    static CpuInfo fromCpu(T)(T cpu)
+    {
+        CpuInfo info;
+        info.PC = cpu.programCounter;
+        info.SP = cpu.stackPointer;
+        info.A = cpu.accumulator;
+        info.X = cpu.xIndex;
+        info.Y = cpu.yIndex;
+        info.S = cpu.flag.toByte();
+        return info;
+    }
+}
+
+
 // Sets the program counter.
 void setPC(T)(T cpu, int addr)
 if (isCpu!T)
@@ -229,11 +269,26 @@ if (isCpu!T)
     cpu.programCounter = cast(ushort)addr;
 }
 
+void setPC(T : CpuInfo)(ref T cpu, int addr)
+{
+    cpu.PC = cast(ushort)addr;
+}
+
+void incPC(T : CpuInfo)(ref T cpu, int amt = 1)
+{
+    cpu.PC = pageCrossAdd(cpu.PC, amt);
+}
+
 // Returns the program counter.
 ushort getPC(T)(T cpu)
 if (isCpu!T)
 {
     return cpu.programCounter;
+}
+
+ushort getPC(T : CpuInfo)(ref T cpu)
+{
+    return cpu.PC;
 }
 
 
@@ -250,6 +305,23 @@ if (isCpu!T)
     cpu.stackPointer = cast(ubyte)val;
 }
 
+void setSP(T : CpuInfo)(ref T cpu, int val)
+{
+    assert(val < 0x0200);
+    cpu.SP = cast(ubyte)val;
+}
+
+void incSP(T : CpuInfo)(ref T cpu, int amt = 1)
+{
+    cpu.SP = cast(ubyte)pageWrapAdd(cpu.SP, amt);
+}
+
+void decSP(T : CpuInfo)(ref T cpu, int amt = -1)
+{
+    cpu.SP = cast(ubyte)pageWrapAdd(cpu.SP, amt);
+}
+
+
 /*
  * Returns the stack address (in the range 0x0100-0x01FF) represented
  * by the stack pointer.
@@ -260,6 +332,66 @@ if (isCpu!T)
     return 0x100 | cpu.stackPointer;
 }
 
+ushort getSP(T : CpuInfo)(ref T cpu)
+{
+    return 0x0100 | cpu.SP;
+}
+
+
+// The names of the registers.
+enum Reg
+{
+    A, X, Y
+}
+
+// Sets a register.
+void setReg(T)(ref T cpu, Reg reg, int val)
+if (isCpu!T || is(T == CpuInfo))
+{
+    final switch (reg)
+    {
+        case Reg.A: setA(cpu, val); break;
+        case Reg.X: setX(cpu, val); break;
+        case Reg.Y: setY(cpu, val); break;
+    }
+}
+
+// Returns a register
+ubyte getReg(T)(ref T cpu, Reg reg)
+if (isCpu!T || is(T == CpuInfo))
+{
+    final switch (reg)
+    {
+        case Reg.A: return getA(cpu);
+        case Reg.X: return getX(cpu);
+        case Reg.Y: return getY(cpu);
+    }
+}
+
+// Sets the A register.
+void setA(T)(T cpu, int val)
+if (isCpu!T)
+{
+    cpu.accumulator = cast(ubyte)val;
+}
+
+void setA(T : CpuInfo)(ref T cpu, int val)
+{
+    cpu.A = cast(ubyte)val;
+}
+
+// Returns the A register.
+ubyte getA(T)(T cpu, int val)
+if (isCpu!T)
+{
+    return cpu.accumulator;
+}
+
+ubyte getA(T : CpuInfo)(ref T cpu)
+{
+    return cpu.A;
+}
+
 
 // Sets the X register.
 void setX(T)(T cpu, int val)
@@ -268,11 +400,21 @@ if (isCpu!T)
     cpu.xIndex = cast(ubyte)val;
 }
 
+void setX(T : CpuInfo)(ref T cpu, int val)
+{
+    cpu.X = cast(ubyte)val;
+}
+
 // Returns the X register.
 ubyte getX(T)(T cpu)
 if (isCpu!T)
 {
     return cpu.xIndex;
+}
+
+ubyte getX(T : CpuInfo)(ref T cpu)
+{
+    return cpu.X;
 }
 
 
@@ -283,11 +425,21 @@ if (isCpu!T)
     cpu.yIndex = cast(ubyte)val;
 }
 
+void setY(T : CpuInfo)(ref T cpu, int val)
+{
+    cpu.Y = cast(ubyte)val;
+}
+
 // Returns the Y register.
 ubyte getY(T)(T cpu)
 if (isCpu!T)
 {
     return cpu.yIndex;
+}
+
+ubyte getY(T : CpuInfo)(ref T cpu)
+{
+    return cpu.Y;
 }
 
 
@@ -302,6 +454,20 @@ enum Flag : ubyte
     N = 0x80
 }
 
+string flagToString(Flag f)
+{
+    switch (f)
+    {
+        case Flag.C: return "C";
+        case Flag.Z: return "Z";
+        case Flag.I: return "I";
+        case Flag.D: return "D";
+        case Flag.V: return "V";
+        case Flag.N: return "N";
+        default: return "?";
+    }
+}
+
 // Sets one or more status flags.
 void setFlag(T)(T cpu, Flag[] flags...)
 if (isCpu!T)
@@ -309,6 +475,11 @@ if (isCpu!T)
     auto reg = cpu.flag.toByte();
     foreach (flag; flags) reg |= flag;
     cpu.flag.fromByte(reg);
+}
+
+void setFlag(T : CpuInfo)(ref T cpu, Flag[] flags...)
+{
+    foreach (flag; flags) cpu.S |= flag;
 }
 
 // Clears one or more status flags.
@@ -320,6 +491,11 @@ if (isCpu!T)
     cpu.flag.fromByte(reg);
 }
 
+void clearFlag(T : CpuInfo)(ref T cpu, Flag[] flags...)
+{
+    foreach (flag; flags) cpu.S &= ~flag;
+}
+
 // Returns a status flag.
 bool getFlag(T)(T cpu, Flag f)
 if (isCpu!T)
@@ -327,9 +503,39 @@ if (isCpu!T)
     return (cpu.flag.toByte() & f) != 0;
 }
 
-// Sets or clears a single status flag.
-void updateFlag(T)(T cpu, Flag f, bool val)
+bool getFlag(T : CpuInfo)(ref T cpu, Flag f)
+{
+    return (cpu.S & f) != 0;
+}
+
+
+// Sets the status register from a byte.
+void setStatus(T)(T cpu, int val)
 if (isCpu!T)
+{
+    cpu.flag.fromByte(cast(ubyte)val);
+}
+
+void setStatus(T : CpuInfo)(ref T cpu, int val)
+{
+    cpu.S = cast(ubyte)val | 0x30;
+}
+
+// Returns the status register as a byte.
+ubyte getStatus(T)(T cpu)
+if (isCpu!T)
+{
+    return cpu.flag.toByte();
+}
+
+ubyte getStatus(T : CpuInfo)(ref T cpu)
+{
+    return cpu.S | 0x30;
+}
+
+// Sets or clears a single status flag.
+void updateFlag(T)(ref T cpu, Flag f, bool val)
+if (isCpu!T || is(T == CpuInfo))
 {
     if (val)
         setFlag(cpu, f);
@@ -337,10 +543,15 @@ if (isCpu!T)
         clearFlag(cpu, f);
 }
 
+void setNZ(T : CpuInfo)(ref T cpu, ubyte val)
+{
+    updateFlag(cpu, Flag.Z, (val == 0));
+    updateFlag(cpu, Flag.N, (val >= 0x80));
+}
 
 // Sets or clears the flag required for a given opcode to branch.
-void expectBranch(T)(T cpu, ubyte opcode)
-if (isCpu!T)
+void expectBranch(T)(ref T cpu, ubyte opcode)
+if (isCpu!T || is(T == CpuInfo))
 {
     switch (opcode)
     {
@@ -348,19 +559,19 @@ if (isCpu!T)
         case /*BMI*/ 0x30: setFlag(cpu, Flag.N); break;
         case /*BVC*/ 0x50: clearFlag(cpu, Flag.V); break;
         case /*BVS*/ 0x70: setFlag(cpu, Flag.V); break;
+        case /*BRA*/ 0x80: break;
         case /*BCC*/ 0x90: clearFlag(cpu, Flag.C); break;
         case /*BCS*/ 0xB0: setFlag(cpu, Flag.C); break;
         case /*BNE*/ 0xD0: clearFlag(cpu, Flag.Z); break;
         case /*BEQ*/ 0xF0: setFlag(cpu, Flag.Z); break;
         default:
-            if (isCMOS!T) { if (opcode == /*BRA*/ 0x80) break; }
             enforce(0, format("not a branching opcpde %0.2X", opcode));
     }
 }
 
 // Returns whether an opcode would branch if executed.
-bool wouldBranch(T)(T cpu, ubyte opcode)
-if (isCpu!T)
+bool wouldBranch(T)(ref T cpu, ubyte opcode)
+if (isCpu!T || is(T == CpuInfo))
 {
     switch (opcode)
     {
@@ -368,18 +579,19 @@ if (isCpu!T)
         case /*BMI*/ 0x30: return getFlag(cpu, Flag.N);
         case /*BVC*/ 0x50: return !getFlag(cpu, Flag.V);
         case /*BVS*/ 0x70: return getFlag(cpu, Flag.V);
+        case /*BRA*/ 0x80: return true;
         case /*BCC*/ 0x90: return !getFlag(cpu, Flag.C);
         case /*BCS*/ 0xB0: return getFlag(cpu, Flag.C);
         case /*BNE*/ 0xD0: return !getFlag(cpu, Flag.Z);
         case /*BEQ*/ 0xF0: return getFlag(cpu, Flag.Z);
         default:
-            if (isCMOS!T) { if (opcode == /*BRA*/ 0x80) return true; }
             assert(0, format("not a branching opcpde %0.2X", opcode));
     }
 }
 
 // Sets or clears the flag required for a given opcode to not branch.
-void expectNoBranch(T)(T cpu, ubyte opcode)
+void expectNoBranch(T)(ref T cpu, ubyte opcode)
+if (isCpu!T || is(T == CpuInfo))
 {
     switch (opcode)
     {
@@ -403,6 +615,17 @@ void expectNoBranch(T)(T cpu, ubyte opcode)
 ushort address(ubyte l, ubyte h)
 {
     return cast(ushort)((h << 8) | l);
+}
+
+
+ubyte addrLo(ushort addr)
+{
+    return cast(ubyte)(addr & 0xFF);
+}
+
+ubyte addrHi(ushort addr)
+{
+    return cast(ubyte)(addr >> 8);
 }
 
 
@@ -435,7 +658,7 @@ ubyte XX()
 // A number different from some other number.
 ubyte notXX(ubyte val)
 {
-    return cast(ubyte)(val ^ 0xAA);
+    return cast(ubyte)~val;
 }
 
 

@@ -10,12 +10,12 @@ if (isCpu!T)
 {
     static if (isNMOS!T)
         enum REG_OPS = cast(ubyte[])
-            x"0A 18 1A 2A 38 3A 4A 58 5A 6A 78 7A 8A 88 98 9A
+            x"0A 18 1A 2A 38 3A 4A 58 5A 6A 78 7A 88 8A 98 9A
               A8 AA B8 BA C8 CA D8 DA E8 EA F8 FA";
     else
         enum REG_OPS = cast(ubyte[])
-            x"0A 18 1A 2A 38 3A 4A 58 6A 78 8A 88 98 9A
-              A8 AA B8 BA C8 CA D8 E8 EA F8";
+            x"0A 18 1A 2A 38 3A 4A 58 6A 78 88 8A 98 9A A8 AA
+              B8 BA C8 CA D8 E8 EA F8";
 }
 
 

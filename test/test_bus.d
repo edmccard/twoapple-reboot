@@ -77,14 +77,14 @@ if (isCpu!T)
     auto opcode = mem[pc];
     assert(IMM_OPS!T.canFind(opcode));
 
-    bool decimal = isCMOS!T && isStrict!T && getFlag(cpu, Flag.D) &&
+    bool decimal = isCMOS!T && getFlag(cpu, Flag.D) &&
                    BCD_OPS!T.canFind(opcode);
 
     cycles = 2 + decimal;
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!decimal(
-                [Bus(Action.READ, pc+2)]);
+           If!decimal(If!(isStrict!T)(
+                [Bus(Action.READ, pc+2)]));
 }
 
 
@@ -287,6 +287,7 @@ if (isCpu!T && isNMOS!T)
     auto opcode = mem[pc];
     assert(HLT_OPS!T.canFind(opcode));
 
+    cycles = 1;
     return [Bus(Action.READ, pc)];
 }
 
@@ -346,14 +347,14 @@ if (isCpu!T)
     bool rmw = RMW_OPS!T.canFind(opcode);
     bool write = !rmw && WRITE_OPS!T.canFind(opcode);
     bool read = !rmw && !write;
-    bool decimal = isCMOS!T && isStrict!T && getFlag(cpu, Flag.D) &&
+    bool decimal = isCMOS!T && getFlag(cpu, Flag.D) &&
                    BCD_OPS!T.canFind(opcode);
 
     cycles += (rmw ? 3 : (write ? 1 : (1 + decimal)));
     return If!read(
                 [Bus(Action.READ, addr)] ~
-                If!decimal(
-                    [Bus(Action.READ, pc + opLen)])) ~
+                If!decimal(If!(isStrict!T)(
+                    [Bus(Action.READ, pc + opLen)]))) ~
            If!write(
                 [Bus(Action.WRITE, addr)]) ~
            If!rmw(
@@ -612,93 +613,116 @@ template timesetup_t(T)
 }
 
 
-// Tests the bus access patterns and cycles taken for a given opcode.
-void test_opcode_timing(T)(ubyte opcode)
+alias void delegate(int, const Bus[], int, const Bus[], ubyte, string)
+    busreport;
+
+
+auto run_timing_test(T)(timesetup_t!T expect, busreport report)
 {
-    addrsetup_t!T[] function(ubyte) setups1;
-    datasetup_t!T[] function(ubyte) setups2;
-    mixin(getMemSetup!T());
-
-    timesetup_t!T expected;
-    mixin(getExpected!T());
-
-    auto funcs1 = setups1(opcode);
-    string name1;
-    foreach(func1; funcs1)
+    auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
+              string msg, TestSetup* next)
     {
-        ushort addr;
-        int cycles;
-        auto cpu = new T();
-        auto block1 = func1(cpu, addr, name1);
-        auto mem = TestMemory(block1);
-        connectMem(cpu, mem);
-        auto exp = expected(cpu, mem, cycles);
-        exp = exp ~ new Bus[8 - exp.length];
-        auto actual = recordBus(cpu);
-        auto actualCycles = recordCycles(cpu);
-        // XXX debug
-        write(format("Testing %s (%0.2X) -- ", name1, opcode));
-        try
-        {
-            runOneOpcode(cpu);
-        }
-        catch (TestException e) // possibly not related to timing
-        {
-            // XXX wrap
-            throw e;
-        }
-        if (actual != exp)
+        mixin testCallNext;
+        auto testcpu = makeCpu!T(cpu);
+        auto mem = TestMemory(data);
+
+        int expCycles;
+        auto expBus = expect(testcpu, mem, expCycles);
+        expBus = expBus ~ new Bus[8 - expBus.length];
+
+        connectMem(testcpu, mem);
+        auto actualBus = recordBus(testcpu);
+        auto actualCycles = recordCycles(testcpu);
+
+        runOneOpcode(testcpu);
+
+        report(actualCycles, actualBus, expCycles, expBus,
+               opcode, T.stringof ~  " | " ~ msg);
+        callNext();
+    }
+    return TestSetup(&setup);
+}
+
+
+
+auto report_timing_debug()
+{
+    void report(int actualCycles, const Bus[] actualBus,
+                int expectCycles, const Bus[] expectBus,
+                ubyte opcode, string msg)
+    {
+        if (actualBus != expectBus)
         {
             // XXX make error message, throw
         }
-        if (actualCycles != cycles)
+        if (actualCycles != expectCycles)
         {
             // XXX make error message, throw
         }
-        if (actual == exp && actualCycles == cycles)
-            writeln("OK");
+        if (actualBus == expectBus && actualCycles == expectCycles) {}
         else
         {
+            write(format("[%0.2X] %s", opcode, msg));
             writeln();
-            writeln(actualCycles, " ", cycles);
-            writeln(actual);
-            writeln(exp);
+            writeln(expectCycles, " ", actualCycles);
+            writeln(expectBus);
+            writeln(actualBus);
             throw new TestException("timing");
         }
     }
+    return &report;
+}
+
+
+// Tests the bus access patterns and cycles taken for a given opcode.
+void test_opcode_timing(T)(ubyte opcode, busreport report)
+{
+    TestSetup setup_addr;
+    TestSetup setup_test;
+    testexpect expect;
+    timesetup_t!T expected;
+
+    mixin(getMemSetup!T());
+    mixin(getExpected!T());
+
+    auto setup = connect(setup_mask_flags(), setup_addr, setup_test);
+    auto run = connect(setup, run_timing_test!T(expected, report));
+    run.run(opcode);
 }
 
 unittest
 {
+    auto report = report_timing_debug();
+
     alias CPU!("65C02", false, false) T1;
     for (int op = 0x00; op < 0x100; op++)
-    test_opcode_timing!T1(cast(ubyte)op);
+        test_opcode_timing!T1(cast(ubyte)op, report);
 
     alias CPU!("65C02", true, false) T2;
     for (int op = 0x00; op < 0x100; op++)
-    test_opcode_timing!T2(cast(ubyte)op);
+        test_opcode_timing!T2(cast(ubyte)op, report);
 
     alias CPU!("6502", false, false) T3;
     for (int op = 0x00; op < 0x100; op++)
-    test_opcode_timing!T3(cast(ubyte)op);
+        test_opcode_timing!T3(cast(ubyte)op, report);
 
     alias CPU!("6502", true, false) T4;
     for (int op = 0x00; op < 0x100; op++)
-    test_opcode_timing!T4(cast(ubyte)op);
+        test_opcode_timing!T4(cast(ubyte)op, report);
 
     alias CPU!("65C02", false, true) T5;
     for (int op = 0x00; op < 0x100; op++)
-    test_opcode_timing!T5(cast(ubyte)op);
+        test_opcode_timing!T5(cast(ubyte)op, report);
 
     alias CPU!("65C02", true, true) T6;
     for (int op = 0x00; op < 0x100; op++)
-    test_opcode_timing!T6(cast(ubyte)op);
+        test_opcode_timing!T6(cast(ubyte)op, report);
 
     alias CPU!("6502", false, true) T7;
     for (int op = 0x00; op < 0x100; op++)
-    test_opcode_timing!T7(cast(ubyte)op);
+        test_opcode_timing!T7(cast(ubyte)op, report);
 
     alias CPU!("6502", true, true) T8;
     for (int op = 0x00; op < 0x100; op++)
-    test_opcode_timing!T8(cast(ubyte)op);
+        test_opcode_timing!T8(cast(ubyte)op, report);
 }
