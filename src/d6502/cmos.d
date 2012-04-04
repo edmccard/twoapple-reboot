@@ -225,7 +225,7 @@ class Cmos(bool strict, bool cumulative) : Cpu!(strict, cumulative)
     void opcode5C()
     {
         readByteOperand();
-        peek(programCounter);
+        peek(programCounter++);
         peek(0xFF00 | operand1);
         peek(0xFFFF);
         peek(0xFFFF);

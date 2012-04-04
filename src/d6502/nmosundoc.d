@@ -263,7 +263,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     override void opcode8B()
     {
         // unstable
-        readVal = operand1 = readFinal(programCounter);
+        readVal = operand1 = readFinal(programCounter++);
 
         version(Atari8Bit)
         {
@@ -350,7 +350,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     /* SBX #$$ */
     override void opcodeCB()
     {
-        readVal = operand1 = readFinal(programCounter);
+        readVal = operand1 = readFinal(programCounter++);
         xIndex &= accumulator;
         flag.zero_ = flag.negative_ = compare(xIndex, readVal);
     }
@@ -358,7 +358,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     /* SBC #$$ */
     override void opcodeEB()
     {
-        readVal = operand1 = readFinal(programCounter);
+        readVal = operand1 = readFinal(programCounter++);
         if (flag.decimal) dec_subWithCarry(readVal);
         else hex_subWithCarry(readVal);
     }
