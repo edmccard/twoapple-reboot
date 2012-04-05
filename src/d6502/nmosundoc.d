@@ -38,7 +38,6 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
         /* TODO: check with the timer how many ticks until it would
          * stop me? */
         static if (cumulative) tick(totalCycles);
-        else tick();
     }
 
     final void addrImplied()

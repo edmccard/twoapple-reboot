@@ -51,6 +51,8 @@ class Cmos(bool strict, bool cumulative) : Cpu!(strict, cumulative)
     {
         super.dec_addWithCarry(val);
         peek(programCounter);
+        // TODO: fix this
+        static if (cumulative) tick(1);
         flag.zero_ = flag.negative_ = accumulator;
     }
 
@@ -71,6 +73,8 @@ class Cmos(bool strict, bool cumulative) : Cpu!(strict, cumulative)
         flag.carry = (diff < 0x100);
 
         peek(programCounter);
+        // TODO: fix this
+        static if (cumulative) tick(1);
         flag.zero_ = flag.negative_ = accumulator = cast(ubyte)a;
     }
 
