@@ -122,7 +122,7 @@ struct Block
  * If data is longer than max, the string will end with an indication
  * of the number of extra bytes.
  */
-string formatMemory(const(ubyte[]) data, ulong max = 3)
+string formatMemory(const(ubyte[]) data, size_t max = 3)
 {
     if (max > data.length) max = data.length;
     auto hexbytes = map!(`format("%0.2X", a)`)(data[0..max]);
