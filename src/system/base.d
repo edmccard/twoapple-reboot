@@ -133,10 +133,10 @@ class System
     {
         cpu = newCpu();
         debug(disassemble) cpu.memoryName = &decoder.memoryReadName;
-        cpu.tick = &timer.tick;
+        cpu.clock.tick = &timer.tick;
         timer.onPrimaryStop(&primaryStop);
-        cpu.memoryRead = &decoder.read;
-        cpu.memoryWrite = &decoder.write;
+        cpu.memory.read = &decoder.read;
+        cpu.memory.write = &decoder.write;
     }
 
     void initIO(ubyte[] vidRom)

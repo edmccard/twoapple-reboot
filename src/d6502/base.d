@@ -135,14 +135,26 @@ class CpuBase(bool strict, bool cumulative)
         restore([0, 0, 0, 0, 0, 0xFF, 0, 0, 0, 0, 0, 1]);
     }
 
-    ubyte delegate(ushort addr) memoryRead;
-    void delegate(ushort addr, ubyte val) memoryWrite;
+    struct _Mem
+    {
+        ubyte delegate(ushort addr) read;
+        void delegate(ushort addr, ubyte val) write;
+    }
+    _Mem memory;
+
+    struct _Clock
+    {
+        static if (cumulative)
+            void delegate(int cycles) tick;
+        else
+            void delegate() tick;
+    }
+    _Clock clock;
+
     debug(disassemble)
     {
         string delegate(ushort addr) memoryName;
     }
-    static if (cumulative) void delegate(int cycles) tick;
-    else  void delegate() tick;
 
     abstract void run(bool continuous);
     abstract void stop();

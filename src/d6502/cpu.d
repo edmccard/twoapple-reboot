@@ -60,8 +60,8 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     }
     final override void run(bool continuous)
     {
-        assert ((memoryRead !is null) && (memoryWrite !is null));
-        assert (tick !is null);
+        assert ((memory.read !is null) && (memory.write !is null));
+        assert (clock.tick !is null);
 
         continueExecution = continuous;
         do
@@ -139,7 +139,7 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         push(statusByte);
         flag.interrupt = true;
         programCounter = readWord(vector, cast(ushort)(vector + 1));
-        static if (cumulative) tick(totalCycles);
+        static if (cumulative) clock.tick(totalCycles);
     }
 
     void doReset()
@@ -150,7 +150,7 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         }
         else
         {
-            tick(); tick();
+            clock.tick(); clock.tick();
         }
 
         peek(STACK_BASE + stackPointer);
@@ -165,35 +165,35 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         signalActive = testSignals();
 
         programCounter = readWord(RESET_VECTOR, RESET_VECTOR + 1);
-        static if (cumulative) tick(totalCycles);
+        static if (cumulative) clock.tick(totalCycles);
     }
 
     final ubyte read(ushort addr)
     {
         static if (cumulative) ++totalCycles;
-        else tick();
-        return memoryRead(addr);
+        else clock.tick();
+        return memory.read(addr);
     }
 
     final void write(ushort addr, ubyte val)
     {
         static if (cumulative) ++totalCycles;
-        else tick();
-        memoryWrite(addr, val);
+        else clock.tick();
+        memory.write(addr, val);
     }
 
     final void peek(ushort addr)
     {
         static if (cumulative) ++totalCycles;
-        else tick();
-        static if (strict) memoryRead(addr);
+        else clock.tick();
+        static if (strict) memory.read(addr);
     }
 
     final void poke(ushort addr, ubyte val)
     {
         static if (cumulative) ++totalCycles;
-        else tick();
-        static if (strict) memoryWrite(addr, val);
+        else clock.tick();
+        static if (strict) memory.write(addr, val);
     }
 
     final ubyte readFinal(ushort addr)
@@ -461,7 +461,7 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     {
         string code = "peek(programCounter);\n";
         code ~= (action == "") ? "" : (action ~ ";");
-        static if (cumulative)  code ~= "tick(totalCycles);\n";
+        static if (cumulative)  code ~= "clock.tick(totalCycles);\n";
         return "override void opcode" ~ opcode ~ "()\n{\n" ~ code ~ "\n}\n";
     }
 
@@ -474,7 +474,7 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     {
         string code = "peek(programCounter);\n";
         code ~= UpdateNZ(action);
-        static if (cumulative) code ~= "tick(totalCycles);\n";
+        static if (cumulative) code ~= "clock.tick(totalCycles);\n";
         return "override void opcode" ~ opcode ~ "()\n{\n" ~ code ~ "}\n";
     }
 
@@ -482,7 +482,7 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     {
         string code = "readByteOperand();\n" ~
             "if (" ~ action ~ ") addrRelative(cast(byte)operand1);\n";
-        static if (cumulative) code ~= "tick(totalCycles);\n";
+        static if (cumulative) code ~= "clock.tick(totalCycles);\n";
         return "override void opcode" ~ opcode ~ "()\n{\n" ~ code ~ "}\n";
     }
 
@@ -719,7 +719,7 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         pushWord(programCounter);
 
         finalAddress |= ((operand2 = read(programCounter)) << 8);
-        static if (cumulative) tick(totalCycles);
+        static if (cumulative) clock.tick(totalCycles);
         programCounter = finalAddress;
     }
 
@@ -729,14 +729,14 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         peek(programCounter);
         flag.fromByte(pull());
         programCounter = readStack() | (readStack() << 8);
-        static if (cumulative) tick(totalCycles);
+        static if (cumulative) clock.tick(totalCycles);
     }
 
     /* JMP $$$$ */
     final override void opcode4C()
     {
         programCounter = readWordOperand();
-        static if (cumulative) tick(totalCycles);
+        static if (cumulative) clock.tick(totalCycles);
     }
 
     /* RTS */
@@ -745,7 +745,7 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         peek(programCounter);
         programCounter = pullWord();
         peek(programCounter);
-        static if (cumulative) tick(totalCycles);
+        static if (cumulative) clock.tick(totalCycles);
         ++programCounter;
     }
 }

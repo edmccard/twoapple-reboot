@@ -80,9 +80,9 @@ if (isCpu!T)
     else
         void tick() {}
 
-    cpu.memoryRead = &mem.read;
-    cpu.memoryWrite = &mem.write;
-    cpu.tick = &tick;
+    cpu.memory.read = &mem.read;
+    cpu.memory.write = &mem.write;
+    cpu.clock.tick = &tick;
 }
 
 
@@ -99,7 +99,7 @@ auto recordCycles(T)(T cpu)
 if (isCpu!T)
 {
     auto cycles = new int;
-    auto wrappedTick = cpu.tick;
+    auto wrappedTick = cpu.clock.tick;
 
     static if (isCumulative!T)
     {
@@ -117,7 +117,7 @@ if (isCpu!T)
             wrappedTick();
         }
     }
-    cpu.tick = &tick;
+    cpu.clock.tick = &tick;
 
     return constRef(cycles);
 }
@@ -155,9 +155,9 @@ if (isCpu!T)
     auto record = new Bus[actions];
     int c;
 
-    enforce(cpu.memoryRead !is null && cpu.memoryWrite !is null);
-    auto wrappedRead = cpu.memoryRead;
-    auto wrappedWrite = cpu.memoryWrite;
+    enforce(cpu.memory.read !is null && cpu.memory.write !is null);
+    auto wrappedRead = cpu.memory.read;
+    auto wrappedWrite = cpu.memory.write;
 
     ubyte read(ushort addr)
     {
@@ -177,8 +177,8 @@ if (isCpu!T)
         wrappedWrite(addr, val);
     }
 
-    cpu.memoryRead = &read;
-    cpu.memoryWrite = &write;
+    cpu.memory.read = &read;
+    cpu.memory.write = &write;
 
     return record;
 }
@@ -210,8 +210,8 @@ enum Action : ushort { NONE, READ, WRITE }
 void runUntilBRK(T)(T cpu)
 if (isCpu!T)
 {
-    assert(cpu.memoryRead !is null);
-    auto wrappedRead = cpu.memoryRead;
+    assert(cpu.memory.read !is null);
+    auto wrappedRead = cpu.memory.read;
 
     ubyte read(ushort addr)
     {
@@ -219,7 +219,7 @@ if (isCpu!T)
         return wrappedRead(addr);
     }
 
-    cpu.memoryRead = &read;
+    cpu.memory.read = &read;
 
     try { cpu.run(true); } catch (StopException e) {}
 }
