@@ -105,7 +105,6 @@ class Controller : Peripheral
     int activeDrive;
     bool writeMode;
     bool loadRegister;
-    bool delegate() checkFinalCycle;
     ubyte dataLatch;
     bool isOn;
     StopTimer drivesOffDelay;
@@ -201,7 +200,7 @@ class Controller : Peripheral
     ubyte Q6L()
     {
         loadRegister = false;
-        if (isOn && checkFinalCycle())
+        if (isOn)
         {
             if (writeMode)
             {

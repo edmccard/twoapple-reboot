@@ -146,7 +146,6 @@ class CpuBase(bool strict, bool cumulative)
 
     abstract void run(bool continuous);
     abstract void stop();
-    static if (!cumulative) abstract bool checkFinalCycle();
     abstract void resetLow();
     abstract void nmiLow(bool signalLow);
     abstract void irqLow(bool signalLow);

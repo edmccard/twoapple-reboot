@@ -62,7 +62,6 @@ class Peripherals_II : Peripherals
     void install(CpuBase cpu, AddressDecoder decoder, Rom mainRom)
     {
         auto diskController = new Controller();
-        diskController.checkFinalCycle = &cpu.checkFinalCycle;
         cards[6] = diskController;    // XXX
 
         auto langCard = new LanguageCard();
@@ -82,7 +81,6 @@ class Peripherals_IIe : Peripherals
     void install(CpuBase cpu, AddressDecoder decoder, Rom mainRom)
     {
         auto diskController = new Controller();
-        diskController.checkFinalCycle = &cpu.checkFinalCycle;
         cards[6] = diskController;    // XXX
     }
 }

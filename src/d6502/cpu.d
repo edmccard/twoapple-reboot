@@ -51,7 +51,6 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     void delegate()[256] opcodes;
     bool continueExecution;
     static if (cumulative) int totalCycles;
-    else bool finalCycle;
 
 
     debug(disassemble)
@@ -70,7 +69,6 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
             if (signalActive) handleSignals();
 
             static if (cumulative) totalCycles = 0;
-            else finalCycle = false;
             opcodePC = programCounter;
             opcode = read(programCounter++);
 
@@ -88,14 +86,6 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     final override void stop()
     {
         continueExecution = false;
-    }
-
-    static if (!cumulative)
-    {
-        final override bool checkFinalCycle()
-        {
-            return finalCycle;
-        }
     }
 
     final override void resetLow()
@@ -204,28 +194,6 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         static if (cumulative) ++totalCycles;
         else tick();
         static if (strict) memoryWrite(addr, val);
-    }
-
-    final ubyte readFinal(ushort addr)
-    {
-        static if (cumulative) tick(++totalCycles);
-        else
-        {
-            finalCycle = true;
-            tick();
-        }
-        return memoryRead(addr);
-    }
-
-    final void writeFinal(ushort addr, ubyte val)
-    {
-        static if (cumulative) tick(++totalCycles);
-        else
-        {
-            finalCycle = true;
-            tick();
-        }
-        memoryWrite(addr, val);
     }
 
     final ushort readWord(ushort addrLo, ushort addrHi)
@@ -596,12 +564,12 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
 
     static string Read(string action)
     {
-        return UpdateNZ(action ~ " (readVal = readFinal(primaryAddress))");
+        return UpdateNZ(action ~ " (readVal = read(primaryAddress))");
     }
 
     static string Decimal(string action)
     {
-        string code = action ~ "(readVal = readFinal(primaryAddress));\n";
+        string code = action ~ "(readVal = read(primaryAddress));\n";
         return "if (flag.decimal) dec_" ~ code ~
             "else hex_" ~ code;
     }
@@ -609,17 +577,17 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     static string Compare(string action)
     {
         return UpdateNZ("compare(" ~ action ~
-                ", (readVal = readFinal(primaryAddress)))");
+                ", (readVal = read(primaryAddress)))");
     }
 
     static string Write(string action)
     {
-        return "writeFinal(primaryAddress, " ~ action ~ ");\n";
+        return "write(primaryAddress, " ~ action ~ ");\n";
     }
 
     static string BitTest()
     {
-        return "bitTest(readVal = readFinal(primaryAddress));\n";
+        return "bitTest(readVal = read(primaryAddress));\n";
     }
 
     mixin(SimpleOpcode("CLC", "18", "flag.carry = false"));
