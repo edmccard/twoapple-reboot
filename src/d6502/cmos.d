@@ -104,20 +104,20 @@ class Cmos(bool strict, bool cumulative) : Cpu!(strict, cumulative)
     static string RMW(string action)
     {
         return "peek(primaryAddress);\n" ~
-            "write(primaryAddress, (flag.zero_ = flag.negative_ = " ~
+            "writeFinal(primaryAddress, (flag.zero_ = flag.negative_ = " ~
             action ~ "(readVal = read(primaryAddress))));\n";
     }
 
     static string TestModify(string action)
     {
         return "peek(primaryAddress);\n" ~
-            "write(primaryAddress, " ~
+            "writeFinal(primaryAddress, " ~
             action ~ "(readVal = read(primaryAddress)));\n";
     }
 
     static string ReadNOP()
     {
-        return "readVal = read(primaryAddress);\n";
+        return "readVal = readFinal(primaryAddress);\n";
     }
 
     static string ManualAddress(string name, int[] opcodes,
@@ -260,7 +260,7 @@ class Cmos(bool strict, bool cumulative) : Cpu!(strict, cumulative)
     /* BIT #$$ */
     void opcode89()
     {
-        readVal = operand1 = read(programCounter++);
+        readVal = operand1 = readFinal(programCounter++);
         flag.zero_ = accumulator & readVal;
     }
 }

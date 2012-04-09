@@ -196,6 +196,26 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
         static if (strict) memoryWrite(addr, val);
     }
 
+    final ubyte readFinal(ushort addr)
+    {
+        static if (cumulative) tick(++totalCycles);
+        else
+        {
+            tick();
+        }
+        return memoryRead(addr);
+    }
+
+    final void writeFinal(ushort addr, ubyte val)
+    {
+        static if (cumulative) tick(++totalCycles);
+        else
+        {
+            tick();
+        }
+        memoryWrite(addr, val);
+    }
+
     final ushort readWord(ushort addrLo, ushort addrHi)
     {
         ushort word = read(addrLo);
@@ -564,12 +584,12 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
 
     static string Read(string action)
     {
-        return UpdateNZ(action ~ " (readVal = read(primaryAddress))");
+        return UpdateNZ(action ~ " (readVal = readFinal(primaryAddress))");
     }
 
     static string Decimal(string action)
     {
-        string code = action ~ "(readVal = read(primaryAddress));\n";
+        string code = action ~ "(readVal = readFinal(primaryAddress));\n";
         return "if (flag.decimal) dec_" ~ code ~
             "else hex_" ~ code;
     }
@@ -577,17 +597,17 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
     static string Compare(string action)
     {
         return UpdateNZ("compare(" ~ action ~
-                ", (readVal = read(primaryAddress)))");
+                ", (readVal = readFinal(primaryAddress)))");
     }
 
     static string Write(string action)
     {
-        return "write(primaryAddress, " ~ action ~ ");\n";
+        return "writeFinal(primaryAddress, " ~ action ~ ");\n";
     }
 
     static string BitTest()
     {
-        return "bitTest(readVal = read(primaryAddress));\n";
+        return "bitTest(readVal = readFinal(primaryAddress));\n";
     }
 
     mixin(SimpleOpcode("CLC", "18", "flag.carry = false"));

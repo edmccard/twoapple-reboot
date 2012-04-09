@@ -37,7 +37,7 @@ class NmosBase(bool strict, bool cumulative) : Cpu!(strict, cumulative)
     static string RMW(string action)
     {
         return "poke(primaryAddress, (readVal = read(primaryAddress)));\n" ~
-            "write(primaryAddress, flag.zero_ = flag.negative_ = " ~
+            "writeFinal(primaryAddress, flag.zero_ = flag.negative_ = " ~
             action ~ "(readVal));\n";
     }
 

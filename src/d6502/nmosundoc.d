@@ -54,12 +54,12 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
             val = val & hiAddr;
             ushort addr = (badAddress == primaryAddress) ? primaryAddress :
                 ((val << 8) | (primaryAddress & 0xFF));
-            write(addr, val);
+            writeFinal(addr, val);
         }
         else
         {
             ubyte hiAddr = cast(ubyte)((baseAddress >> 8) + 1);
-            write(primaryAddress, val & hiAddr);
+            writeFinal(primaryAddress, val & hiAddr);
         }
     }
 
@@ -122,13 +122,13 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
 
     static string ReadNOP()
     {
-        return "readVal = read(primaryAddress);\n";
+        return "readVal = readFinal(primaryAddress);\n";
     }
 
     static string RMW_Read(string action1, string action2)
     {
         return "poke(primaryAddress, (readVal = read(primaryAddress)));\n" ~
-            "write(primaryAddress, flag.zero_ = flag.negative_ = " ~
+            "writeFinal(primaryAddress, flag.zero_ = flag.negative_ = " ~
             "(writeVal = " ~ action1 ~ "(readVal)));\n" ~
             action2 ~ " writeVal;\n";
     }
@@ -136,7 +136,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     static string RMW_Compare(string action1, string action2)
     {
         return "poke(primaryAddress, (readVal = read(primaryAddress)));\n" ~
-            "write(primaryAddress, " ~
+            "writeFinal(primaryAddress, " ~
             "(writeVal = " ~ action1 ~ "(readVal)));\n" ~
             "flag.zero_ = flag.negative_ = " ~
             "compare(" ~ action2 ~ ", writeVal);\n";
@@ -145,7 +145,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     static string RMW_Decimal(string action1, string action2)
     {
         return "poke(primaryAddress, (readVal = read(primaryAddress)));\n" ~
-            "write(primaryAddress, flag.zero_ = flag.negative_ = " ~
+            "writeFinal(primaryAddress, flag.zero_ = flag.negative_ = " ~
             "(writeVal = " ~ action1 ~ "(readVal)));\n" ~
             "if (flag.decimal) dec_" ~ action2 ~ "(writeVal);\n" ~
             "else hex_" ~ action2 ~ "(writeVal);\n";
@@ -209,7 +209,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     /* ANC #$$ */
     override void opcode0B()
     {
-        readVal = operand1 = read(programCounter);
+        readVal = operand1 = readFinal(programCounter);
         flag.zero_ = flag.negative_ = (accumulator = readVal);
         flag.carry = (flag.negative_ > 0x7F);
     }
@@ -217,7 +217,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     /* ANC #$$ */
     override void opcode2B()
     {
-        readVal = operand1 = read(programCounter);
+        readVal = operand1 = readFinal(programCounter);
         flag.zero_ = flag.negative_ = (accumulator = readVal);
         flag.carry = (flag.negative_ > 0x7F);
     }
@@ -225,7 +225,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     /* ALR #$$ */
     override void opcode4B()
     {
-        readVal = operand1 = read(programCounter);
+        readVal = operand1 = readFinal(programCounter);
         flag.zero_ = flag.negative_ =
             (accumulator = shiftRight(accumulator & readVal));
     }
@@ -233,7 +233,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     /* ARR #$$ */
     override void opcode6B()
     {
-        readVal = operand1 = read(programCounter);
+        readVal = operand1 = readFinal(programCounter);
         ubyte val = readVal & accumulator;
         if (flag.decimal) {
             ubyte temp = cast(ubyte)((val >> 1) + (flag.carry ? 0x80 : 0));
@@ -263,7 +263,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     override void opcode8B()
     {
         // unstable
-        readVal = operand1 = read(programCounter++);
+        readVal = operand1 = readFinal(programCounter++);
 
         version(Atari8Bit)
         {
@@ -316,7 +316,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     /* LAX #$$ */
     override void opcodeAB()
     {
-        readVal = operand1 = read(programCounter);
+        readVal = operand1 = readFinal(programCounter);
 
         version(Commodore128)
         {
@@ -341,7 +341,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     override void opcodeBB()
     {
         addrAbsoluteY(false);
-        readVal = read(primaryAddress);
+        readVal = readFinal(primaryAddress);
 
         flag.zero_ = flag.negative_ =
             (xIndex = accumulator = (stackPointer & readVal));
@@ -350,7 +350,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     /* SBX #$$ */
     override void opcodeCB()
     {
-        readVal = operand1 = read(programCounter++);
+        readVal = operand1 = readFinal(programCounter++);
         xIndex &= accumulator;
         flag.zero_ = flag.negative_ = compare(xIndex, readVal);
     }
@@ -358,7 +358,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
     /* SBC #$$ */
     override void opcodeEB()
     {
-        readVal = operand1 = read(programCounter++);
+        readVal = operand1 = readFinal(programCounter++);
         if (flag.decimal) dec_subWithCarry(readVal);
         else hex_subWithCarry(readVal);
     }
