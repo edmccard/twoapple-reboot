@@ -1,2 +1,2 @@
--unittest -I.. -I../src -g
+-I.. -I../src -g
 
