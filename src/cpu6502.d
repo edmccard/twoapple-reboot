@@ -798,3 +798,13 @@ string Hex2(int dec)
     return HEX_DIGITS[highNybble..highNybble+1] ~
            HEX_DIGITS[lowNybble..lowNybble+1];
 }
+
+
+//alias Cpu!("6502", false, false) T1;
+//alias Cpu!("6502", false, true) T2;
+//alias Cpu!("6502", true, false) T3;
+//alias Cpu!("6502", true, true) T4;
+//alias Cpu!("65C02", false, false) T5;
+//alias Cpu!("65C02", false, true) T6;
+//alias Cpu!("65C02", true, false) T7;
+//alias Cpu!("65C02", true, true) T8;

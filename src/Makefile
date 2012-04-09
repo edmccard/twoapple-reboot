@@ -5,7 +5,7 @@ LINK_OPTS = -L-lpthread -L-lGL -L-ldl -L-lX11 \
    -L-L$(GTKD) -L-lgtkd -L-lgtkdgl \
    -L-L$(DERELICT)/lib -L-lDerelictSDL -L-lDerelictUtil \
 
-ALL_SRC = $(shell find -name "*.d")
+ALL_SRC = $(shell find -name "*.d" \! -name "cpu6502.d")
 ALL_OBJS = $(ALL_SRC:%.d=%.o)
 
 all: ${ALL_OBJS}

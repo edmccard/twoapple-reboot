@@ -198,22 +198,22 @@ class Cpu(bool strict, bool cumulative)  : CpuBase!(strict, cumulative)
 
     final ubyte readFinal(ushort addr)
     {
-        static if (cumulative) tick(++totalCycles);
+        static if (cumulative) clock.tick(++totalCycles);
         else
         {
-            tick();
+            clock.tick();
         }
-        return memoryRead(addr);
+        return memory.read(addr);
     }
 
     final void writeFinal(ushort addr, ubyte val)
     {
-        static if (cumulative) tick(++totalCycles);
+        static if (cumulative) clock.tick(++totalCycles);
         else
         {
-            tick();
+            clock.tick();
         }
-        memoryWrite(addr, val);
+        memory.write(addr, val);
     }
 
     final ushort readWord(ushort addrLo, ushort addrHi)
