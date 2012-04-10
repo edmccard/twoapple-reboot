@@ -8,7 +8,7 @@ module test.cpu;
 
 import std.conv, std.exception, std.random, std.string, std.traits;
 
-public import cpu6502 : Cpu, is6502, is65C02;
+public import cpu.d6502 : Cpu, is6502, is65C02;
 
 
 // True if T is the type of a cpu.
