@@ -92,7 +92,7 @@ class System
         decoder.nullRead = &video_.scanner.floatingBus;
 
         peripherals = newPeripherals();
-        peripherals.install(cpu, decoder, memory_.mainRom);
+        peripherals.install(decoder, memory_.mainRom);
         ioMem.initialize(decoder, switches, timer, peripherals);
 
         input.onReset = &reset;
