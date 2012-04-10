@@ -1,3 +1,26 @@
+/+
+ + cpu6502.d
+ +
+ + Copyright: 2012 Ed McCardell, 2007 Gerald Stocker
+ +
+ + This file is part of twoapple-reboot.
+ +
+ + twoapple-reboot is free software; you can redistribute it and/or modify
+ + it under the terms of the GNU General Public License as published by
+ + the Free Software Foundation; either version 2 of the License, or
+ + (at your option) any later version.
+ +
+ + twoapple-reboot is distributed in the hope that it will be useful,
+ + but WITHOUT ANY WARRANTY; without even the implied warranty of
+ + MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ + GNU General Public License for more details.
+ +
+ + You should have received a copy of the GNU General Public License
+ + along with twoapple-reboot; if not, write to the Free Software
+ + Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ +/
+
+
 module cpu6502;
 
 
@@ -78,12 +101,6 @@ static if (!__traits(compiles, { bool b = opArray; })) enum opArray = 0;
 static assert (versionCheck);
 
 
-// This needs to be before any mixins which call any CTFE functions
-// that make use of these constants.
-enum { IMP, IMM, ZP, ZPX, ZPY, IZX, IZY, ABS, ABX, ABY, IND, REL,
-       ZPI, ABI, NP1, NP8, KIL }
-
-
 final class Cpu(string chip, bool strict, bool cumulative)
 {
     static assert(chip == "6502" || chip == "65C02" || chip == "65c02");
@@ -122,13 +139,11 @@ final class Cpu(string chip, bool strict, bool cumulative)
     ubyte A, X, Y, S;
     ushort PC;
 
+    // The status flags.
     ubyte N, Z;
     bool V, D, I, C;
 
-    static if (opArray)
-    {
-        mixin(OpArrayDef());
-    }
+    static if (opArray) { mixin(OpArrayDef()); }
 
     // TODO: other methods for stopping cpu
     bool keepRunning;
@@ -192,10 +207,6 @@ enum ushort IRQ_VECTOR = 0xFFFE;
 
 private:
 
-version(OpFunctions) mixin(OpBodies("6502", vStrict, vCumulative));
-version(OpFunctions) mixin(OpBodies("65C02", vStrict, vCumulative));
-
-
 string OpArrayDef()
 {
     version(OpDelegates)
@@ -243,6 +254,18 @@ string OpBodies(string chip, bool strict, bool cumulative)
                        If!(cumulative)("int cycles = 1;\n") ~
                        OpBody(op, chip, strict, cumulative) ~ "}\n";
         }
+/+
+        foreach (op; 13..256)
+            version(OpDelegates)
+                ret ~= "final void opcode_" ~ Hex2(op) ~ "()\n{\n" ~
+                       If!(cumulative)("int cycles = 1;\n") ~
+                       "" ~ "}\n";
+            version(OpFunctions)
+                ret ~= "void opcode_" ~ Hex2(op) ~
+                       "(T)(T cpu) if (is" ~ chip ~ "!T)\n{\n" ~
+                       If!(cumulative)("int cycles = 1;\n") ~
+                       "" ~ "}\n";
++/
         return ret;
     }
 }
@@ -308,7 +331,8 @@ string OpBody(int op, string chip, bool s, bool c)
             return Jump(op, chip, s, c) ~
                    Done(c);
         case "KIL":
-            return "";
+            return Attr("PC") ~ "--;\n" ~
+                   Done(c);
         case "BPL":
             return Branch("!(" ~ Attr("N") ~ " & 0x80)", nmos, s, c) ~
                    Done(c);
@@ -337,82 +361,96 @@ string OpBody(int op, string chip, bool s, bool c)
             return Branch("!" ~ Attr("Z"), nmos, s, c) ~
                    Done(c);
         case "CLC":
-            return AddrImplied(s, c) ~
+            return AddrIMP(s, c) ~
                    ClearFlag("C") ~
                    Done(c);
         case "SEC":
-            return AddrImplied(s, c) ~
+            return AddrIMP(s, c) ~
                    SetFlag("C") ~
                    Done(c);
         case "CLI":
-            return AddrImplied(s, c) ~
+            return AddrIMP(s, c) ~
                    ClearFlag("I") ~
                    Done(c);
         case "SEI":
-            return AddrImplied(s, c) ~
+            return AddrIMP(s, c) ~
                    SetFlag("I") ~
                    Done(c);
         case "CLV":
-            return AddrImplied(s, c) ~
+            return AddrIMP(s, c) ~
                    ClearFlag("V") ~
                    Done(c);
         case "CLD":
-            return AddrImplied(s, c) ~
+            return AddrIMP(s, c) ~
                    ClearFlag("D") ~
                    Done(c);
         case "SED":
-            return AddrImplied(s, c) ~
+            return AddrIMP(s, c) ~
                    SetFlag("D") ~
                    Done(c);
         case "NOP":
-            return ""; // address modes
+            return Nop(op, chip, s, c) ~
+                   Done(c);
         case "TAX":
-            return "";
+            return Transfer(op, "A", "X", s, c) ~
+                   Done(c);
         case "TXA":
-            return "";
+            return Transfer(op, "X", "A", s, c) ~
+                   Done(c);
         case "TAY":
-            return "";
+            return Transfer(op, "A", "Y", s, c) ~
+                   Done(c);
         case "TYA":
-            return "";
+            return Transfer(op, "Y", "A", s, c) ~
+                   Done(c);
         case "TSX":
-            return "";
+            return Transfer(op, "S", "X", s, c) ~
+                   Done(c);
         case "TXS":
-            return "";
+            return Transfer(op, "X", "S", s, c) ~
+                   Done(c);
         case "DEX":
-            return DecReg("X", s, c) ~
+            return AddrIMP(s, c) ~
+                   Dec(Attr("X")) ~
                    Done(c);
         case "DEY":
-            return DecReg("Y", s, c) ~
+            return AddrIMP(s, c) ~
+                   Dec(Attr("Y")) ~
                    Done(c);
         case "INX":
-            return IncReg("X", s, c) ~
+            return AddrIMP(s, c) ~
+                   Inc(Attr("X")) ~
                    Done(c);
         case "INY":
-            return IncReg("Y", s, c) ~
+            return AddrIMP(s, c) ~
+                   Inc(Attr("Y")) ~
                    Done(c);
         case "PHP":
-            return AddrImplied(s, c) ~
+            return AddrIMP(s, c) ~
                    Push(Attr("statusToByte()"), s, c) ~
                    Done(c);
         case "PLP":
-            return AddrImplied(s, c) ~
+            return AddrIMP(s, c) ~
                    PullStatus(s, c) ~
                    Done(c);
         case "PLA":
-            return AddrImplied(s, c) ~
-                   PullInto(Attr("A"), s, c) ~
-                   SetNZ(Attr("A")) ~
+            return PullReg("A", s, c) ~
                    Done(c);
         case "PLX":
-            return "";
+            return PullReg("X", s, c) ~
+                   Done(c);
         case "PLY":
-            return "";
+            return PullReg("Y", s, c) ~
+                   Done(c);
         case "PHA":
-            return "";
+            return PushReg("A", s, c) ~
+                   Done(c);
         case "PHX":
-            return "";
+            return PushReg("X", s, c) ~
+                   Done(c);
         case "PHY":
-            return "";
+            return PushReg("Y", s, c) ~
+                   Done(c);
         case "LDA":
             return Load(op, "A", chip, s, c) ~
                    Done(c);
@@ -434,7 +472,8 @@ string OpBody(int op, string chip, bool s, bool c)
         case "STZ":
             return "";
         case "BIT":
-            return ""; // address modes
+            return Bit(op, chip, s, c) ~
+                   Done(c);
         case "CMP":
             return Compare(op, "A", chip, s, c) ~
                    Done(c);
@@ -460,23 +499,35 @@ string OpBody(int op, string chip, bool s, bool c)
             return Sub(op, chip, s, c) ~
                    Done(c);
         case "ASL":
-            return ""; // n/c (op, cyc)
+            if (op == 0x0a)
+                return AddrIMP(s, c) ~ ShiftLeft(Attr("A")) ~ Done(c);
+            else
+                return RMW(op, ShiftLeft("data"), chip, s, c) ~ Done(c);
         case "ROL":
-            return ""; // n/c (op, cyc)
+            if (op == 0x2a)
+                return AddrIMP(s, c) ~ RotateLeft(Attr("A")) ~ Done(c);
+            else
+                return RMW(op, RotateLeft("data"), chip, s, c) ~ Done(c);
         case "LSR":
-            return ""; // n/c (op, cyc)
+            if (op == 0x4a)
+                return AddrIMP(s, c) ~ ShiftRight(Attr("A")) ~ Done(c);
+            else
+                return RMW(op, ShiftRight("data"), chip, s, c) ~ Done(c);
         case "ROR":
-            return ""; // n/c (op, cyc)
+            if (op == 0x6a)
+                return AddrIMP(s, c) ~ ShiftRight(Attr("A")) ~ Done(c);
+            else
+                return RMW(op, RotateRight("data"), chip, s, c) ~ Done(c);
         case "INC":
             if (op == 0x1a)
-                return IncReg("A", s, c) ~ Done(c);
+                return AddrIMP(s, c) ~ Inc(Attr("A")) ~ Done(c);
             else
-                return RMW(op, "data++;\n", chip, s, c) ~ Done(c);
+                return RMW(op, Inc("data"), chip, s, c) ~ Done(c);
         case "DEC":
             if (op == 0x3a)
-                return DecReg("A", s, c) ~ Done(c);
+                return AddrIMP(s, c) ~ Dec(Attr("A")) ~ Done(c);
             else
-                return RMW(op, "data--;\n", chip, s, c) ~ Done(c);
+                return RMW(op, Dec("data"), chip, s, c) ~ Done(c);
         case "TRB":
             return "";
         case "TSB":
@@ -521,52 +572,116 @@ string OpBody(int op, string chip, bool s, bool c)
 }
 
 
-string AddrImmediate(bool s, bool c)
+string AddrIMM(bool s, bool c)
 {
-     return Local("ushort", "address") ~ " = " ~ Attr("PC") ~ "++;\n";
+     return Local("ushort") ~ "address = " ~ Attr("PC") ~ "++;\n";
 }
 
-string AddrImplied(bool s, bool c)
+string AddrIMP(bool s, bool c)
 {
     return Peek(Attr("PC"), s, c);
 }
 
+string AddrZP(bool s, bool c)
+{
+    return ReadOp(Local("ushort", "address"), c);
+}
 
-string AddrAbsoluteIdx(int op, string reg, string chip, bool s, bool c)
+string AddrZPXY(string reg, string chip, bool s, bool c)
+{
+    bool nmos = (chip == "6502");
+
+    return ReadOp(Local("ushort", "base"), c) ~
+           If!(nmos)(
+               Peek("base", s, c),
+               Peek(Attr("PC"), s, c)) ~
+           Local("ushort") ~
+           "address = cast(ubyte)(base + " ~ Attr(reg) ~ ");\n";
+}
+
+string AddrIZX(string chip, bool s, bool c)
+{
+    bool nmos = (chip == "6502");
+    return ReadOp(Local("ushort", "base"), c) ~
+           If!(nmos)(
+               Peek("base", s, c),
+               Peek(Attr("PC"), s, c)) ~
+           ReadWordZP("ushort", "address", "base + " ~ Attr("X"), c);
+}
+
+string AddrIZY(int op, string chip, bool s, bool c)
+{
+    int exCyc = opExCyc(op, chip);
+    bool nmos = (chip == "6502");
+
+    return ReadOp("ubyte vector", c) ~
+           ReadWordZP("ushort", "base", "vector", c) ~
+           Local("ushort") ~
+           "address = cast(ushort)(base + " ~ Attr("Y") ~ ");\n" ~
+           CheckShortcut("address", Attr("PC"),
+                         exCyc, nmos, s, c);
+}
+
+string AddrABS(bool s, bool c)
+{
+    return ReadWordOp("ushort", "address", c);
+}
+
+string AddrABXY(int op, string reg, string chip, bool s, bool c)
 {
     bool nmos = (chip == "6502");
     int exCyc = opExCyc(op, chip);
     string IDX = Attr(reg);
 
-    return ReadWordOpLocal("ushort", "base", c) ~
-           Local("ushort","address")~" = cast(ushort)(base + " ~ IDX ~ ");\n" ~
-           "ushort guess = (base & 0xFF00) | cast(ubyte)address;\n" ~
-           "if (guess != address)\n{\n" ~
-           If!(nmos)(Peek("guess", s, c), Peek(Attr("PC"), s, c)) ~
+    return ReadWordOp("ushort", "base", c) ~
+           Local("ushort") ~ "address = cast(ushort)(base + " ~ IDX ~ ");\n" ~
+           CheckShortcut("address", Attr("PC"), exCyc, nmos, s, c);
+}
+
+string AddrZPI(bool s, bool c)
+{
+    return ReadOp(Local("ushort", "base"), c) ~
+           ReadWordZP("ushort", "address", "base", c);
+}
+
+string Branch(string check, bool nmos, bool s, bool c)
+{
+    string PC = Attr("PC");
+    return ReadOp(Local("ubyte", "op1"), c) ~
+           "if (" ~ check ~ ")\n{\n" ~
+               Peek(PC, s, c) ~
+               Local("ushort", "base") ~ " = " ~ PC ~ ";\n" ~
+               PC ~ " = cast(ushort)(" ~ PC ~ " + cast(byte)op1);\n" ~
+               CheckShortcut(Attr("PC"), "base", 0, nmos, s, c) ~
+           "}\n";
+}
+
+string CheckShortcut(string addr, string pc, int exCyc, bool nmos, bool s,
+                     bool c)
+{
+    return "ushort guess = (base & 0xFF00) | cast(ubyte)" ~ addr ~ ";\n" ~
+           "if (guess != " ~ addr ~ ")\n{\n" ~
+               If!(nmos)(Peek("guess", s, c),
+                         Peek(pc, s, c)) ~
            "}\n" ~
            If!(exCyc)("else\n{\n" ~ Peek("address", s, c) ~ "}\n");
 }
 
 
-string Branch(string check, bool nmos, bool s, bool c)
+string Nop(int op, string chip, bool s, bool c)
 {
-    string PC = Attr("PC");
-    return ReadInto(Local("ubyte", "op1"), PC, c) ~
-           IncPC() ~
-           "if (" ~ check ~ ")\n{\n" ~
-               Peek(PC, s, c) ~
-               Local("ushort", "base") ~ " = " ~ PC ~ ";\n" ~
-               PC ~ " = cast(ushort)(" ~ PC ~ " + cast(byte)op1);\n" ~
-               "ushort guess = (base & 0xFF00) | cast(ubyte)" ~ PC ~ ";\n" ~
-               "if (guess != " ~ PC ~ ")\n{\n" ~
-                   If!(nmos)(Peek("guess", s, c), Peek("base", s, c)) ~
-               "}\n}\n";
+    auto mode = opMode(op, chip);
+    if (mode == IMP || mode == NP1 || mode == NP8)
+        return Address(op, chip, s, c);
+    else
+        return Address(op, chip, s, c) ~
+               Peek("address", true, c);
 }
 
 
 string Break(bool s, bool c)
 {
-    return AddrImplied(s, c) ~
+    return AddrIMP(s, c) ~
            IncPC() ~
            PushPC(s, c) ~
            Push(Attr("statusToByte()"), s, c) ~
@@ -577,11 +692,9 @@ string Break(bool s, bool c)
 
 string RetSub(bool s, bool c)
 {
-    string PC = Attr("PC");
-
-    return AddrImplied(s, c) ~
+    return AddrIMP(s, c) ~
            PullPC(s, c) ~
-           Peek(PC, s, c) ~
+           Peek(Attr("PC"), s, c) ~
            IncPC();
 }
 
@@ -590,22 +703,149 @@ string JumpSub(bool s, bool c)
 {
     string PC = Attr("PC");
 
-    return ReadInto(Local("ushort", "address"), PC ~ "++", c) ~
+    return ReadOp(Local("ushort", "address"), c) ~
            Peek("0x0100 + " ~ Attr("S"), s, c) ~
            PushPC(s, c) ~
-           PreAccess(c) ~
-           "address |= (" ~ ReadRaw(PC ~ "++") ~ " << 8);\n" ~
+           PreAccess(c) ~ "address |= (" ~ ReadRaw(PC ~ "++") ~ " << 8);\n" ~
            PC ~ " = address;\n";
 }
 
 
 string Jump(int op, string chip, bool s, bool c)
 {
+    bool nmos = (chip == "6502");
+    string PC = Attr("PC");
+
     if (op == 0x4c)
         return Address(op, chip, s, c) ~
-               Attr("PC") ~ " = address;\n";
-    else
+               PC ~ " = address;\n";
+    else if (op == 0x6c)
+        return ReadWordOp("ushort", "base", c) ~
+               If!(nmos)(
+                   "",
+                   Peek(PC, s, c)) ~
+               ReadWordBasic(PC, "base",
+                             If!(nmos)(
+                                 "(base & 0xFF00) | cast(ubyte)(base + 1)",
+                                 "cast(ushort)(base + 1)"), c);
+    else if (op == 0x7c)
+        return ReadWordOp("ushort", "base",  c) ~
+               Peek(PC, s, c) ~
+               ReadWord(PC, "cast(ushort)(base + " ~ Attr("X") ~ ")", c);
+    return "";
+}
+
+
+string ReadInto(string var, string action, string addr, bool c)
+{
+    return PreAccess(c) ~
+           var ~ " " ~ action ~ " " ~ ReadRaw("(" ~ addr ~ ")") ~ ";\n";
+}
+
+string ReadInto(string var, string addr, bool c)
+{
+    return ReadInto(var, "=", addr, c);
+}
+
+string ReadOp(string var, bool c)
+{
+    return ReadInto(var, Attr("PC") ~ "++", c);
+}
+
+string ReadRaw(string addr)
+{
+    return Attr("memory") ~ ".read(" ~ addr ~")";
+}
+
+string ReadWordBasic(string type, string var, string addr1, string addr2,
+                     bool c)
+{
+    return PreAccess(c) ~
+           Local(type, var) ~ " = " ~ ReadRaw(addr1) ~ ";\n" ~
+           PreAccess(c) ~
+           var ~ " |= ((" ~ ReadRaw(addr2) ~ ") << 8);\n";
+}
+
+string ReadWordBasic(string var, string addr1, string addr2, bool c)
+{
+    return ReadWordBasic("", var, addr1, addr2, c);
+}
+
+string ReadWord(string type, string var, string addr, bool c)
+{
+    return ReadWordBasic(type, var, addr, "cast(ushort)(" ~ addr ~ " + 1)", c);
+}
+
+string ReadWord(string var, string addr, bool c)
+{
+    return ReadWord("", var, addr, c);
+}
+
+string ReadWordZP(string type, string var, string addr, bool c)
+{
+    return ReadWordBasic(type, var, "cast(ubyte)( " ~ addr ~ ")",
+                                    "cast(ubyte)(" ~ addr ~ " + 1)", c);
+}
+
+string ReadWordZP(string var, string addr, bool c)
+{
+    return ReadWordZP("", var, addr, c);
+}
+
+string ReadWordOp(string type, string var, bool c)
+{
+    string PC = Attr("PC");
+
+    return ReadWordBasic(type, var, PC ~ "++", PC ~ "++", c);
+}
+
+string ReadWordOp(string var, bool c)
+{
+    return ReadWordOp("", var, c);
+}
+
+
+string Local(string type)
+{
+    version(OpSwitch)
         return "";
+    else version(OpNestedSwitch)
+        return "";
+    else
+        return type ~ " ";
+}
+
+string Local(string type, string var)
+{
+    version(OpSwitch)
+        return var;
+    else version(OpNestedSwitch)
+        return var;
+    else
+        return type ~ " " ~ var;
+}
+
+
+string Transfer(int op, string source, string dest, bool s, bool c)
+{
+    return AddrIMP(s, c) ~
+           Attr(dest) ~ " = " ~ Attr(source) ~ ";\n" ~
+           ((op != 0x9a) ? SetNZ(Attr(dest)) : "");
+}
+
+
+string PullReg(string reg, bool s, bool c)
+{
+    return AddrIMP(s, c) ~
+           PullInto(Attr(reg), s, c) ~
+           SetNZ(Attr(reg));
+}
+
+
+string PushReg(string reg, bool s, bool c)
+{
+    return AddrIMP(s, c) ~
+           Push(Attr(reg), s, c);
 }
 
 
@@ -633,10 +873,23 @@ string Compare(int op, string reg, string chip, bool s, bool c)
 }
 
 
+string Bit(int op, string chip, bool s, bool c)
+{
+    bool notImm = (opMode(op, chip) != IMM);
+
+    return Address(op, chip, s, c) ~
+           ReadInto(Local("ubyte", "data"), "address", c) ~
+           If!(notImm)(
+               Attr("N") ~ " = data;\n" ~
+               Attr("V") ~ " = ((data & 0x40) != 0);\n") ~
+           Attr("Z") ~ " = (" ~ Attr("A") ~ " & data);\n";
+}
+
+
 string Logic(int op, string action, string chip, bool s, bool c)
 {
     return Address(op, chip, s, c) ~
-           ReadInto(Attr("A"), "address", c, action) ~
+           ReadInto(Attr("A"), action, "address", c) ~
            SetNZ(Attr("A"));
 }
 
@@ -646,9 +899,9 @@ string Add(int op, string chip, bool s, bool c)
     return Address(op, chip, s, c) ~
            ReadInto(Local("ubyte", "data"), "address", c) ~
            "if (" ~ Attr("D") ~ ")\n{\n" ~
-           DecAdd(chip, s, c) ~
+               DecAdd(chip, s, c) ~
            "}\nelse\n{\n" ~
-           HexAdd(chip, s, c) ~
+               HexAdd(chip, s, c) ~
            "}\n";
 }
 
@@ -692,9 +945,9 @@ string Sub(int op, string chip, bool s, bool c)
     return Address(op, chip, s, c) ~
            ReadInto(Local("ubyte", "data"), "address", c) ~
            "if (" ~ Attr("D") ~ ")\n{\n" ~
-           DecSub(chip, s, c) ~
+               DecSub(chip, s, c) ~
            "}\nelse\n{\n" ~
-           HexSub(chip, s, c) ~
+               HexSub(chip, s, c) ~
            "}\n";
 }
 
@@ -751,21 +1004,49 @@ string DecSubCMOS(bool s, bool c)
 }
 
 
-string IncReg(string reg, bool s, bool c)
+string Inc(string val)
 {
-    return AddrImplied(s, c) ~
-           Attr(reg) ~ "++;\n" ~
-           SetNZ(Attr(reg));
+    return val ~ "++;\n" ~
+           SetNZ(val);
 }
 
 
-string DecReg(string reg, bool s, bool c)
+string Dec(string val)
 {
-    return AddrImplied(s, c) ~
-           Attr(reg) ~ "--;\n" ~
-           SetNZ(Attr(reg));
+    return val ~ "--;\n" ~
+           SetNZ(val);
 }
 
+
+string ShiftLeft(string val)
+{
+    return Attr("C") ~ " = (" ~ val ~ " > 0x7F);\n" ~
+           SetNZ(val ~ " = cast(ubyte)(" ~ val ~ " << 1)");
+}
+
+string RotateLeft(string val)
+{
+    string C = Attr("C");
+
+    return "auto oldC = " ~ C ~ ";\n" ~
+            C ~ " = (" ~ val ~ " > 0x7f);\n" ~
+            SetNZ(val ~ " = cast(ubyte)(" ~ val ~ " << 1 | (oldC ? 1 : 0))");
+}
+
+string ShiftRight(string val)
+{
+    return Attr("C") ~ " = ((" ~ val ~ " & 0x01) != 0);\n" ~
+           SetNZ(val ~ " = " ~ val ~ " >> 1");
+}
+
+string RotateRight(string val)
+{
+    string C = Attr("C");
+
+    return "auto oldC = " ~ C ~ ";\n" ~
+           C ~ " = ((" ~ val ~ " & 0x01) != 0);\n" ~
+           SetNZ(val ~ " = (" ~ val ~ " >> 1 | (oldC ? 0x80 : 0))");
+}
 
 string RMW(int op, string action, string chip, bool s, bool c)
 {
@@ -776,7 +1057,6 @@ string RMW(int op, string action, string chip, bool s, bool c)
            If!(nmos)(Poke("address", "data", s, c),
                      Peek("address", s, c)) ~
            action ~
-           SetNZ("data") ~
            Write("address", "data", c);
 }
 
@@ -789,35 +1069,35 @@ string Address(int op, string chip, bool s, bool c)
     final switch (opMode(op, chip))
     {
         case IMP:
-            return AddrImplied(s, c);
+            return AddrIMP(s, c);
         case IMM:
-            return AddrImmediate(s, c);
+            return AddrIMM(s, c);
         case ZP:
-            return Local("ushort", "address") ~ " = 0;";
+            return AddrZP(s, c);
         case ZPX:
-            return Local("ushort", "address") ~ " = 0;";
+            return AddrZPXY("X", chip, s, c);
         case ZPY:
-            return Local("ushort", "address") ~ " = 0;";
+            return AddrZPXY("Y", chip, s, c);
         case IZX:
-            return Local("ushort", "address") ~ " = 0;";
+            return AddrIZX(chip, s, c);
         case IZY:
-            return Local("ushort", "address") ~ " = 0;";
+            return AddrIZY(op, chip, s, c);
         case ABS:
-            return ReadWordOpLocal("ushort", "address", c);
+            return AddrABS(s, c);
         case ABX:
-            return AddrAbsoluteIdx(op, "X", chip, s, c);
+            return AddrABXY(op, "X", chip, s, c);
         case ABY:
-            return AddrAbsoluteIdx(op, "Y", chip, s, c);
+            return AddrABXY(op, "Y", chip, s, c);
         case IND:
             return Local("ushort", "address") ~ " = 0;";
         case REL:
             return Local("ushort", "address") ~ " = 0;";
         case ZPI:
-            return Local("ushort", "address") ~ " = 0;";
+            return AddrZPI(s, c);
         case ABI:
             return Local("ushort", "address") ~ " = 0;";
         case NP1:
-            return Local("ushort", "address") ~ " = 0;";
+            return "";
         case NP8:
             return Local("ushort", "address") ~ " = 0;";
         case KIL:
@@ -845,43 +1125,11 @@ string Poke(string addr, string val, bool strict, bool cumulative)
                Attr("memory") ~ ".write(" ~ addr ~ ", " ~ val ~ ");\n");
 }
 
-string ReadInto(string var, string addr, bool c, string action = "=")
-{
-    return PreAccess(c) ~
-           var ~ " " ~ action ~ " " ~ ReadRaw("(" ~ addr ~ ")") ~ ";\n";
-}
-
-string ReadRaw(string addr)
-{
-    return Attr("memory") ~ ".read(" ~ addr ~")";
-}
-
 string Write(string addr, string val, bool cumulative)
 {
     return PreAccess(cumulative) ~
            Attr("memory") ~ ".write(" ~ addr ~ ", " ~ val ~ ");\n";
 }
-
-string ReadWord(string var, string addr, bool c)
-{
-    return PreAccess(c) ~
-           var ~ " = " ~ ReadRaw(addr) ~ ";\n" ~
-           PreAccess(c) ~
-           var ~ " |= (" ~ ReadRaw("cast(ushort)((" ~ addr ~ ") + 1)") ~
-           " << 8);\n";
-}
-
-string ReadWordOpLocal(string type, string var, bool c)
-{
-    string PC = Attr("PC");
-
-    return PreAccess(c) ~
-           Local(type, var) ~ " = " ~ ReadRaw(PC ~ "++") ~ ";\n" ~
-           PreAccess(c) ~
-           var ~ " |= (" ~ ReadRaw(PC ~ "++") ~
-           " << 8);\n";
-}
-
 
 string IncPC()
 {
@@ -970,17 +1218,6 @@ string Attr(string var)
         return "cpu." ~ var;
     else
         return var;
-}
-
-
-string Local(string type, string var)
-{
-    version(OpSwitch)
-        return var;
-    else version(OpNestedSwitch)
-        return var;
-    else
-        return type ~ " " ~ var;
 }
 
 
@@ -1102,6 +1339,9 @@ immutable OP_NAMES_65C02 = [
 
 
 // Addressing modes.
+
+enum { IMP, IMM, ZP, ZPX, ZPY, IZX, IZY, ABS, ABX, ABY, IND, REL,
+       ZPI, ABI, NP1, NP8, KIL }
 
 immutable ADDR_MODES_6502 = [
     IMP, IZX, KIL, IZX, ZP,  ZP,  ZP,  ZP,
@@ -1252,6 +1492,10 @@ string Fmt(string f, string[] p ...)
 }
 
 
+version(OpFunctions) mixin(OpBodies("6502", vStrict, vCumulative));
+version(OpFunctions) mixin(OpBodies("65C02", vStrict, vCumulative));
+
+
 //alias Cpu!("6502", false, false) T1;
 //alias Cpu!("6502", false, true) T2;
 //alias Cpu!("6502", true, false) T3;
@@ -1265,6 +1509,6 @@ string Fmt(string f, string[] p ...)
 void main()
 {
     import std.stdio;
-    writeln(OpBody(0x9d, "6502", true, false));
+    writeln(OpBody(0x11, "6502", true, false));
 }
 +/
