@@ -1,6 +1,3 @@
-module test.test_bus;
-
-
 import test.base, test.cpu;
 
 

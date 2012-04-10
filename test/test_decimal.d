@@ -1,6 +1,3 @@
-module test.test_decimal;
-
-
 import std.stdio;
 
 import test.base, test.cpu;

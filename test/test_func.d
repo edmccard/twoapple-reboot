@@ -1,6 +1,3 @@
-module test.test_func;
-
-
 import test.base, test.cpu;
 
 
