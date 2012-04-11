@@ -94,6 +94,13 @@ final class Cpu(string chip, bool strict, bool cumulative)
     bool V, D, I, C;
 
     static if (opArray) { mixin(OpArrayDef()); }
+    version(OpFunctions) {}
+    else
+    {
+        static if (cumulative) { int cycles; }
+        ushort address, base;
+        ubyte data;
+    }
 
     // TODO: other methods for stopping cpu
     bool keepRunning;
@@ -132,7 +139,6 @@ final class Cpu(string chip, bool strict, bool cumulative)
         static if (!opArray)
         {
             static if (cumulative) { int cycles; }
-            ubyte op1;
             ushort address, base;
             ubyte data;
         }
@@ -174,6 +180,6 @@ version(OpFunctions) mixin(OpBodies("65C02", vStrict, vCumulative));
 void main()
 {
     import std.stdio;
-    writeln(OpBody(0x11, "6502", true, false));
+    writeln(OpBody(0x11, "65C02", true, false));
 }
 +/
