@@ -239,7 +239,7 @@ struct CpuInfo
 
     string toString() const
     {
-        return format("PC %0.4X SP %0.2X S %0.2X A %0.2X X %0.2X Y %0.2X",
+        return format("PC %0.4X SP %0.2X S %0.8b A %0.2X X %0.2X Y %0.2X",
                       PC, SP, S, A, X, Y);
     }
 
