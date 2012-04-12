@@ -130,7 +130,7 @@ class NmosUndoc(bool strict, bool cumulative) : NmosBase!(strict, cumulative)
         return "poke(primaryAddress, (readVal = read(primaryAddress)));\n" ~
             "writeFinal(primaryAddress, flag.zero_ = flag.negative_ = " ~
             "(writeVal = " ~ action1 ~ "(readVal)));\n" ~
-            action2 ~ " writeVal;\n";
+            "flag.zero_ = flag.negative_ = (" ~action2 ~ " writeVal);\n";
     }
 
     static string RMW_Compare(string action1, string action2)
