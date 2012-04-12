@@ -422,7 +422,7 @@ string OpBody(int op, string chip, bool s, bool c)
             if (op != 0xAB)
                 ret ~= Load(_A ~ " = " ~ _X, env);
             else
-                return "";
+                ret ~= LAX_IMM_Undoc(env);
             break;
         case "SAX":
             ret ~= Store(_A ~ " & " ~ _X, env);
@@ -440,15 +440,20 @@ string OpBody(int op, string chip, bool s, bool c)
             ret ~= AXS_Undoc(env);
             break;
         case "AHX":
-            return "";
+            ret ~= Strange_Undoc(_A ~ " &" ~ _X, env);
+            break;
         case "SHY":
-            return "";
+            ret ~= Strange_Undoc(_Y, env);
+            break;
         case "SHX":
-            return "";
+            ret ~= Strange_Undoc(_X, env);
+            break;
         case "TAS":
-            return "";
+            ret ~= Strange_Undoc(_S ~ " = " ~ _A ~ " & " ~ _X, env);
+            break;
         case "XAA":
-            return "";
+            ret ~= XAA_Undoc(env);
+            break;
         case "SLO":
             ret ~= RMW_Undoc(ShiftLeft("data"),
                              SetNZ(_A ~ " |= data"), env);
@@ -867,6 +872,50 @@ string AXS_Undoc(Env env)
     return ReadInto(Local("ubyte", "data"), "address", env) ~
            _X ~ " &= " ~ _A ~ ";\n" ~
            CompareBase(_X, env);
+}
+
+
+/*
+ * This opcode is unstable on certain machines; see
+ * http://visual6502.org/wiki/index.php?title=6502_Opcode_8B_(XAA,ANE)
+ */
+string XAA_Undoc(Env env)
+{
+    /*
+     * As far as I can tell, the only programs in the wild that depend
+     * on this opcode are certain C64 Mastertronic tape loaders; this
+     * magic value is used in the VICE emulator to make them work.
+     */
+    string MAGIC = "0xff";
+
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           _A ~ " = ((" ~ _A ~ " | " ~ MAGIC ~ ") & " ~ _X ~ " & data);\n" ~
+           SetNZ(_A);
+}
+
+
+/*
+ * This opcode is unstable on certain machines.
+ */
+string LAX_IMM_Undoc(Env env)
+{
+    // From the VICE emulator.
+    string MAGIC = "0xee";
+
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           _A ~ " = ((" ~ _A ~ " | " ~ MAGIC ~ ") & " ~ _X ~ " & data);\n" ~
+           SetNZ(_A);
+}
+
+
+// TODO: these are affected by DMA on the C64.
+string Strange_Undoc(string val, Env env)
+{
+    return "ubyte addrHi = cast(ubyte)((address >> 8) + 1);\n" ~
+           Local("ubyte", "data") ~ " = " ~ val ~ " & addrHi;\n" ~
+           "address = (guess == address) ? address : " ~
+           "((data << 8) | (address & 0xff));\n" ~
+           Write("address", "data", env);
 }
 
 
