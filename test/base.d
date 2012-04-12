@@ -1232,8 +1232,8 @@ auto setup_op_LSR(bool isAcc)
 }
 
 
-// For ASO.
-auto setup_op_ASO()
+// For SLO.
+auto setup_op_SLO()
 {
     auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
               string msg, TestSetup* next)
@@ -1249,7 +1249,7 @@ auto setup_op_ASO()
         callNext("acc 0x20 ");
     }
     return connect(TestSetup(&setup),
-                   setup_rmw(false, "ASO ", setup_asl_data()));
+                   setup_rmw(false, "SLO ", setup_asl_data()));
 }
 
 // For RLA.
@@ -1270,8 +1270,8 @@ auto setup_op_RLA()
 }
 
 
-// For LSE.
-auto setup_op_LSE()
+// For SRE.
+auto setup_op_SRE()
 {
     auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
               string msg, TestSetup* next)
@@ -1284,7 +1284,7 @@ auto setup_op_LSE()
         callNext("acc 0xFF ");
     }
     return connect(TestSetup(&setup),
-                   setup_rmw(false, "LSE ", setup_right_data()));
+                   setup_rmw(false, "SRE ", setup_right_data()));
 }
 
 
@@ -1382,8 +1382,8 @@ auto setup_op_SBC(bool cmos)
 }
 
 
-// For INS.
-auto setup_op_INS()
+// For ISC.
+auto setup_op_ISC()
 {
     auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
               string msg, TestSetup* next)
@@ -1400,7 +1400,7 @@ auto setup_op_INS()
     }
 
     return connect(TestSetup(&setup), setup_flag(Flag.C), setup_flag(Flag.D),
-                   setup_rmw(false, "INS ", setup_inc_data()));
+                   setup_rmw(false, "ISC ", setup_inc_data()));
 }
 
 
@@ -1427,8 +1427,8 @@ auto setup_op_cmp(Reg reg)
 }
 
 
-// For DCM.
-auto setup_op_DCM()
+// For DCP.
+auto setup_op_DCP()
 {
     auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
               string msg, TestSetup* next)
@@ -1445,7 +1445,7 @@ auto setup_op_DCM()
     }
 
     return connect(TestSetup(&setup), setup_flag(Flag.C),
-                   setup_rmw(false, "DCM ", setup_dec_data()));
+                   setup_rmw(false, "DCP ", setup_dec_data()));
 }
 
 
@@ -2105,8 +2105,8 @@ auto expect_LSR(bool isAcc)
 }
 
 
-// For ASO.
-auto expect_ASO()
+// For SLO.
+auto expect_SLO()
 {
     void expect(ref Expected expected, const OpInfo info)
     {
@@ -2138,8 +2138,8 @@ auto expect_RLA()
 }
 
 
-// For LSE.
-auto expect_LSE()
+// For SRE.
+auto expect_SRE()
 {
     void expect(ref Expected expected, const OpInfo info)
     {
@@ -2306,8 +2306,8 @@ auto expect_SBC(bool cmos)
 }
 
 
-// For INS.
-auto expect_INS()
+// For ISC.
+auto expect_ISC()
 {
     void expect(ref Expected expected, const OpInfo info)
     {
@@ -2342,8 +2342,8 @@ auto expect_cmp(Reg reg)
 }
 
 
-// For DCM.
-auto expect_DCM()
+// For DCP.
+auto expect_DCP()
 {
     void expect(ref Expected expected, const OpInfo info)
     {
@@ -2510,12 +2510,12 @@ if (isCpu!T)
         get_expect([0x04, 0x44, 0x64], "NOP");
         get_expect([0x14, 0x34, 0x54, 0x74, 0xD4, 0xF4], "NOP");
         get_both([0x83, 0x87, 0x8F, 0x97], "SAX");
-        get_both([0x03, 0x07, 0x0F, 0x13, 0x17, 0x1B, 0x1F], "ASO");
+        get_both([0x03, 0x07, 0x0F, 0x13, 0x17, 0x1B, 0x1F], "SLO");
         get_both([0x23, 0x27, 0x2F, 0x33, 0x37, 0x3B, 0x3F], "RLA");
-        get_both([0x43, 0x47, 0x4F, 0x53, 0x57, 0x5B, 0x5F], "LSE");
+        get_both([0x43, 0x47, 0x4F, 0x53, 0x57, 0x5B, 0x5F], "SRE");
         get_both([0x63, 0x67, 0x6F, 0x73, 0x77, 0x7B, 0x7F], "RRA");
-        get_both([0xE3, 0xE7, 0xEF, 0xF3, 0xF7, 0xFB, 0xFF], "INS");
-        get_both([0xC3, 0xC7, 0xCF, 0xD3, 0xD7, 0xDB, 0xDF], "DCM");
+        get_both([0xE3, 0xE7, 0xEF, 0xF3, 0xF7, 0xFB, 0xFF], "ISC");
+        get_both([0xC3, 0xC7, 0xCF, 0xD3, 0xD7, 0xDB, 0xDF], "DCP");
         get_both([0xEB], "SBC", "false");
 
         // TODO: implement these opcode tests
