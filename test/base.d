@@ -2115,6 +2115,7 @@ auto expect_ASO()
         setA(expected.cpu, getA(expected.cpu) | val);
 
         expect_rmw(false, val, expected, info);
+        setNZ(expected.cpu, getA(expected.cpu));
     }
     return &expect;
 }
@@ -2131,6 +2132,7 @@ auto expect_RLA()
         setA(expected.cpu, getA(expected.cpu) & val);
 
         expect_rmw(false, val, expected, info);
+        setNZ(expected.cpu, getA(expected.cpu));
     }
     return &expect;
 }
@@ -2146,6 +2148,7 @@ auto expect_LSE()
         setA(expected.cpu, getA(expected.cpu) ^ val);
 
         expect_rmw(false, val, expected, info);
+        setNZ(expected.cpu, getA(expected.cpu));
     }
     return &expect;
 }
