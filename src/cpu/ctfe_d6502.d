@@ -405,7 +405,7 @@ string OpBody(int op, string chip, bool s, bool c)
             break;
         case "ROR":
             if (op == 0x6a)
-                ret ~= ShiftRight(_A);
+                ret ~= RotateRight(_A);
             else
                 ret ~= RMW(RotateRight("data"), env);
             break;
