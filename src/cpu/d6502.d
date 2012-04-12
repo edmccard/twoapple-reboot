@@ -180,6 +180,6 @@ version(OpFunctions) mixin(OpBodies("65C02", vStrict, vCumulative));
 void main()
 {
     import std.stdio;
-    writeln(OpBody(0x11, "65C02", true, false));
+    writeln(OpBody(0x11, "6502", true, false));
 }
 +/

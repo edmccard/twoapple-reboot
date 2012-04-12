@@ -198,7 +198,8 @@ struct Env
 string OpBody(int op, string chip, bool s, bool c)
 {
     auto env = Env(op, chip, s, c);
-    string ret = ((env.mode == IMP) ? AddrIMP(env) : "");
+    string ret = ((op == 0x20) ? "" : Address(env));
+
     final switch (opName(op, chip))
     {
         case "BRK":
@@ -415,19 +416,29 @@ string OpBody(int op, string chip, bool s, bool c)
                 ret ~= RMW(TestSet(), env);
                 break;
         case "LAS":
-            return "";
+            ret ~= LAS_Undoc(env);
+            break;
         case "LAX":
-            return ""; // address modes
+            if (op != 0xAB)
+                ret ~= Load(_A ~ " = " ~ _X, env);
+            else
+                return "";
+            break;
         case "SAX":
-            return "";
+            ret ~= Store(_A ~ " & " ~ _X, env);
+            break;
         case "ANC":
-            return "";
+            ret ~= ANC_Undoc(env);
+            break;
         case "ALR":
-            return "";
+            ret ~= ALR_Undoc(env);
+            break;
         case "ARR":
-            return "";
+            ret ~= ARR_Undoc(env);
+            break;
         case "AXS":
-            return "";
+            ret ~= AXS_Undoc(env);
+            break;
         case "AHX":
             return "";
         case "SHY":
@@ -439,17 +450,26 @@ string OpBody(int op, string chip, bool s, bool c)
         case "XAA":
             return "";
         case "SLO":
-            return "";
+            ret ~= RMW_Undoc(ShiftLeft("data"),
+                             SetNZ(_A ~ " |= data"), env);
+            break;
         case "RLA":
-            return "";
+            ret ~= RMW_Undoc(RotateLeft("data"),
+                             SetNZ(_A ~ " &= data"), env);
+            break;
         case "SRE":
-            return "";
+            ret ~= RMW_Undoc(ShiftRight("data"),
+                             SetNZ(_A ~ " ^= data"), env);
+            break;
         case "RRA":
-            return "";
+            ret ~= RMW_Undoc(RotateRight("data"), AddBase(env), env);
+            break;
         case "DCP":
-            return "";
+            ret ~= RMW_Undoc(Dec("data"), CompareBase(_A, env), env);
+            break;
         case "ISC":
-            return "";
+            ret ~= RMW_Undoc(Inc("data"), SubBase(env), env);
+            break;
     }
     return ret ~ Done(env);
 }
@@ -497,8 +517,7 @@ string Jump(Env env)
     bool nmos = env.nmos;
 
     if (env.op == 0x4c)
-        return Address(env) ~
-               _PC ~ " = address;\n";
+        return _PC ~ " = address;\n";
     else if (env.op == 0x6c)
         return ReadWordOp("ushort", "base", env) ~
                If!(cmos)(
@@ -531,10 +550,9 @@ string Branch(string check, Env env)
 string Nop(Env env)
 {
     if (env.mode == IMP ||  env.mode == NP1 || env.mode == NP8)
-        return Address(env);
+        return ""; // XXX add np1/np8 stuff
     else
-        return Address(env) ~
-               PreAccess(env) ~
+        return PreAccess(env) ~
                ReadRaw("address") ~ ";\n";
 }
 
@@ -562,24 +580,26 @@ string PushReg(string reg, Env env)
 
 string Load(string reg, Env env)
 {
-    return Address(env) ~
-           ReadInto(reg, "address", env) ~
+    return ReadInto(reg, "address", env) ~
            SetNZ(reg);
 }
 
 
 string Store(string reg, Env env)
 {
-    return Address(env) ~
-           Write("address", reg, env);
+    return Write("address", reg, env);
 }
 
 
 string Compare(string reg, Env env)
 {
-    return Address(env) ~
-           ReadInto(Local("ubyte", "data"), "address", env) ~
-           UpdateFlag(_C, reg ~ " >= data") ~
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           CompareBase(reg, env);
+}
+
+string CompareBase(string reg, Env env)
+{
+    return UpdateFlag(_C, reg ~ " >= data") ~
            SetNZ("cast(ubyte)(" ~ reg ~ " - data)");
 }
 
@@ -588,8 +608,7 @@ string Bit(Env env)
 {
     bool notImm = (env.mode != IMM);
 
-    return Address(env) ~
-           ReadInto(Local("ubyte", "data"), "address", env) ~
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
            If!(notImm)(
                _N ~ " = data;\n" ~
                _V ~ " = ((data & 0x40) != 0);\n") ~
@@ -599,17 +618,20 @@ string Bit(Env env)
 
 string Logic(string action, Env env)
 {
-    return Address(env) ~
-           ReadInto(_A, action, "address", env) ~
+    return ReadInto(_A, action, "address", env) ~
            SetNZ(_A);
 }
 
 
 string Add(Env env)
 {
-    return Address(env) ~
-           ReadInto(Local("ubyte", "data"), "address", env) ~
-           "if (" ~ _D ~ ")\n{\n" ~
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           AddBase(env);
+}
+
+string AddBase(Env env)
+{
+    return "if (" ~ _D ~ ")\n{\n" ~
                DecAdd(env) ~
            "}\nelse\n{\n" ~
                HexAdd(env) ~
@@ -650,11 +672,15 @@ string DecAdd(Env env)
 
 string Sub(Env env)
 {
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           SubBase(env);
+}
+
+string SubBase(Env env)
+{
     bool nmos = env.nmos;
 
-    return Address(env) ~
-           ReadInto(Local("ubyte", "data"), "address", env) ~
-           "if (" ~ _D ~ ")\n{\n" ~
+    return "if (" ~ _D ~ ")\n{\n" ~
                If!(nmos)(DecSubNMOS(), DecSubCMOS(env)) ~
            "}\nelse\n{\n" ~
                HexSub() ~
@@ -768,12 +794,79 @@ string RMW(string action, Env env)
 {
     bool nmos = env.nmos;
 
-    return Address(env) ~
-           ReadInto(Local("ubyte", "data"), "address", env) ~
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
            If!(nmos)(Poke("address", "data", env),
                      Peek("address", env)) ~
            action ~
            Write("address", "data", env);
+}
+
+
+string RMW_Undoc(string action1, string action2, Env env)
+{
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           Poke("address", "data", env) ~
+           action1 ~
+           Write("address", "data", env) ~
+           action2;
+}
+
+
+string LAS_Undoc(Env env)
+{
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           SetNZ(_X ~ " = " ~ _A ~ " = (" ~ _S ~ " & data)");
+}
+
+
+string ARR_Undoc(Env env)
+{
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           "ubyte tmp1 = data & " ~ _A ~ ";\n" ~
+           "if (" ~ _D ~ ")\n{\n" ~
+               "ubyte tmp2 = cast(ubyte)((tmp1 >> 1) + (" ~
+               _C ~ " ? 0x80 : 0));\n" ~
+               _N ~ " = " ~ _Z ~ " = tmp2;\n" ~
+               _V ~ " = (((tmp2 ^ tmp1) & 0x40) != 0);\n" ~
+               "if ((data & 0x0F) + (tmp1 & 0x01) > 5)\n" ~
+                   "tmp2 = (tmp2 & 0xF0) + ((tmp2 + 0x6) & 0x0F);\n" ~
+               "if (tmp1 + (tmp1 & 0x10) >= 0x60)\n{\n" ~
+                   "tmp2 += 0x60;\n" ~
+                   SetFlag(_C) ~
+               "}\nelse\n" ~
+                   ClearFlag(_C) ~
+               _A ~ " = tmp2;\n" ~
+           "}\nelse{\n" ~
+               _A ~ " = cast(ubyte)((tmp1 >> 1) + (" ~
+               _C ~ " ? 0x80 : 0));\n" ~
+               _N ~ " = " ~ _Z ~ " = " ~_A ~ ";\n" ~
+               "tmp1 >>= 7;\n" ~
+               _C ~ " = (tmp1 != 0);\n" ~
+               _V ~ " = ((tmp1 ^ ((" ~ _A ~ " >> 5) & 1)) != 0);\n}";
+}
+
+
+string ANC_Undoc(Env env)
+{
+    return ReadInto(_A, "address", env) ~
+           SetNZ(_A) ~
+           _C ~ " = (" ~ _A ~ " > 0x7f);\n";
+}
+
+
+string ALR_Undoc(Env env)
+{
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           _A ~ " &= data;\n" ~
+           ShiftRight(_A);
+}
+
+
+string AXS_Undoc(Env env)
+{
+    return ReadInto(Local("ubyte", "data"), "address", env) ~
+           _X ~ " &= " ~ _A ~ ";\n" ~
+           CompareBase(_X, env);
 }
 
 
@@ -823,7 +916,7 @@ string Address(Env env)
     final switch (env.mode)
     {
         case IMP:
-            return "";
+            return AddrIMP(env);
         case IMM:
             return AddrIMM(env);
         case ZP:
@@ -853,7 +946,7 @@ string Address(Env env)
         case NP1:
             return "";
         case NP8:
-            return Local("ushort", "address") ~ " = 0;";
+            return AddrNP8(env);
         case KIL:
             return "";
     }
@@ -924,6 +1017,18 @@ string AddrZPI(Env env)
 {
     return ReadOp(Local("ushort", "base"), env) ~
            ReadWordZP("ushort", "address", "base", env);
+}
+
+string AddrNP8(Env env)
+{
+    return ReadOp(Local("ushort", "base"), env) ~
+           Peek(_PC, env) ~
+           IncPC() ~
+           Peek("0xff00 | base", env) ~
+           Peek("0xffff", env) ~
+           Peek("0xffff", env) ~
+           Peek("0xffff", env) ~
+           Peek("0xffff", env);
 }
 
 string CheckShortcut(string base, string addr, Env env)
