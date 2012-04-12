@@ -1,10 +1,11 @@
 module test.base;
 
 
-import std.algorithm, std.array, std.conv, std.exception, std.stdio,
-       std.string;
+import std.algorithm, std.array, std.conv, std.exception, std.getopt,
+       std.stdio, std.string;
 
 import test.cpu, test.opcodes;
+import cpu.data_d6502;
 
 
 /*
@@ -3333,4 +3334,70 @@ void test_opcode_timing(T)(ubyte opcode, busreport report)
     auto setup = connect(setup_mask_flags(), setup_addr, setup_test);
     auto run = connect(setup, run_timing_test!T(expected, report));
     run.run(opcode);
+}
+
+
+version(Strict)
+    enum testStrict = true;
+else
+    enum testStrict = false;
+version(Cumulative)
+    enum testCumulative = true;
+else
+    enum testCumulative = false;
+
+
+struct CheckOptions
+{
+    enum Addr
+    {
+       IMP, IMM, ZP, ZPX, ZPY, IZX, IZY, ABS, ABX, ABY, IND, REL,
+       ZPI, ABI, NP1, NP8, KIL
+    }
+
+    string[] opcodes;
+    ubyte[] codes6502;
+    ubyte[] codes65C02;
+    Addr[] addr;
+
+    this(string[] args)
+    {
+        getopt(args, "op", &opcodes, "addr", &addr);
+        foreach (op; opcodes)
+        {
+            if (op.startsWith("0x") || op.startsWith("0X"))
+                op = op[2..$];
+            if (isNumeric(op))
+            {
+                int code = to!int(op, 16);
+                if (code >= 0x00 && code <= 0xFF)
+                {
+                    codes6502 ~= [cast(ubyte)code];
+                    codes65C02 ~= [cast(ubyte)code];
+                }
+            }
+            else
+            {
+                foreach (code, name; OP_NAMES_6502)
+                    if (name == op) codes6502 ~= [cast(ubyte)code];
+                foreach (code, name; OP_NAMES_65C02)
+                    if (name == op) codes65C02 ~= [cast(ubyte)code];
+            }
+        }
+        foreach (a; addr)
+        {
+            foreach (code, mode; ADDR_MODES_6502)
+                if (a == mode) codes6502 ~= [cast(ubyte)code];
+            foreach (code, mode; ADDR_MODES_65C02)
+                if (a == mode) codes65C02 ~= [cast(ubyte)code];
+        }
+        if (opcodes.empty && addr.empty)
+        {
+            codes6502 = codes65C02 = new ubyte[256];
+            foreach (code; 0..256)
+            {
+                codes6502[code] = cast(ubyte)code;
+            }
+        }
+    }
 }

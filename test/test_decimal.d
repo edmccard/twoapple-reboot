@@ -228,6 +228,7 @@ if (isCpu!T)
 
 version(Benchmark)
 {
+    static assert(!testStrict && !testCumulative);
     import std.datetime, std.stdio;
     void f0()
     {
@@ -246,24 +247,10 @@ else
 {
     void main()
     {
-        writeln("Testing decimal mode, NMOS(Strict.no, Cumulative.no)");
-        testDecimalMode!(CPU!("6502", false, false))();
-        writeln("Testing decimal mode, CMOS(Strict.no, Cumulative.no)");
-        testDecimalMode!(CPU!("65C02", false, false))();
+        writeln("Testing decimal mode, 6502");
+        testDecimalMode!(CPU!("6502", testStrict, testCumulative))();
 
-        writeln("Testing decimal mode, NMOS(Strict.no, Cumulative.yes)");
-        testDecimalMode!(CPU!("6502", false, true))();
-        writeln("Testing decimal mode, CMOS(Strict.no, Cumulative.yes)");
-        testDecimalMode!(CPU!("65C02", false, true))();
-
-        writeln("Testing decimal mode, NMOS(Strict.yes, Cumulative.no)");
-        testDecimalMode!(CPU!("6502", true, false))();
-        writeln("Testing decimal mode, CMOS(Strict.yes, Cumulative.no)");
-        testDecimalMode!(CPU!("65C02", true, false))();
-
-        writeln("Testing decimal mode, NMOS(Strict.yes, Cumulative.yes)");
-        testDecimalMode!(CPU!("6502", true, true))();
-        writeln("Testing decimal mode, CMOS(Strict.yes, Cumulative.yes)");
-        testDecimalMode!(CPU!("65C02", true, true))();
+        writeln("Testing decimal mode, 65C02");
+        testDecimalMode!(CPU!("65C02", testStrict, testCumulative))();
     }
 }
