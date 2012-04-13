@@ -228,11 +228,10 @@ if (isCpu!T)
 
 version(Benchmark)
 {
-    static assert(!testStrict && !testCumulative);
     import std.datetime, std.stdio;
     void f0()
     {
-        testDecimalMode!(CPU!("65C02", false, false))();
+        testDecimalMode!(CPU!("65C02"))();
     }
 
     void main()
@@ -248,9 +247,9 @@ else
     void main()
     {
         writeln("Testing decimal mode, 6502");
-        testDecimalMode!(CPU!("6502", testStrict, testCumulative))();
+        testDecimalMode!(CPU!("6502"))();
 
         writeln("Testing decimal mode, 65C02");
-        testDecimalMode!(CPU!("65C02", testStrict, testCumulative))();
+        testDecimalMode!(CPU!("65C02"))();
     }
 }

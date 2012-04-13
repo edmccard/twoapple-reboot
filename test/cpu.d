@@ -11,6 +11,16 @@ import std.conv, std.exception, std.random, std.string, std.traits;
 public import cpu.d6502 : Cpu, is6502, is65C02;
 
 
+version(Strict)
+    enum strict = true;
+else
+    enum strict = false;
+version(Cumulative)
+    enum cumulative = true;
+else
+    enum cumulative = false;
+
+
 // True if T is the type of a cpu.
 template isCpu(T)
 {
@@ -29,27 +39,13 @@ template isCMOS(T)
     enum isCMOS = is65C02!T;
 }
 
-// True if the cpu type T accesses memory on every cycle.
-template isStrict(T)
-{
-    enum isStrict = isCpu!T && __traits(getMember, T, "_isStrict");
-}
-
-// True if the cpu type T aggregates ticks.
-template isCumulative(T)
-{
-    enum isCumulative = isCpu!T && __traits(getMember, T, "_isCumulative");
-}
-
 
 /*
- * The type of a cpu, based on its architecture (6502 or 65C02) and
- * its timing characteristics (strict or not bus access, cumulative or
- * not cycle reporting).
+ * The type of a cpu, based on its architecture (6502 or 65C02).
  */
-template CPU(string arch, bool strict, bool cumulative)
+template CPU(string arch)
 {
-    alias Cpu!(arch, strict, cumulative) CPU;
+    alias Cpu!(arch) CPU;
 }
 
 
@@ -70,7 +66,7 @@ if (isCpu!T)
 void connectMem(T, S)(T cpu, ref S mem)
 if (isCpu!T)
 {
-    static if (isCumulative!T)
+    static if (cumulative)
         void tick(int cycles) {}
     else
         void tick() {}
@@ -96,7 +92,7 @@ if (isCpu!T)
     auto cycles = new int;
     auto wrappedTick = cpu.clock.tick;
 
-    static if (isCumulative!T)
+    static if (cumulative)
     {
         void tick(int cyc)
         {

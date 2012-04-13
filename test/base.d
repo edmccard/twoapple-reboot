@@ -8,6 +8,16 @@ import test.cpu, test.opcodes;
 import cpu.data_d6502;
 
 
+version(Strict)
+    enum strict = true;
+else
+    enum strict = false;
+version(Cumulative)
+    enum cumulative = true;
+else
+    enum cumulative = false;
+
+
 /*
  * Emulates zero page, stack, and 3 additional pages of "main memory"
  * starting at a user-defined address. Accesses outside the defined
@@ -2672,7 +2682,7 @@ if (isCpu!T)
 
     cycles = 2;
     return [Bus(Action.READ, pc)] ~
-            If!(isStrict!T)(
+            If!(strict)(
                 [Bus(Action.READ, pc+1)]);
 }
 
@@ -2689,7 +2699,7 @@ if (isCpu!T)
 
     cycles = 3;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1)]) ~
            [Bus(Action.WRITE, sp)];
 }
@@ -2708,7 +2718,7 @@ if (isCpu!T)
 
     cycles = 4;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1),
                  Bus(Action.READ, sp)]) ~
            [Bus(Action.READ, sp1)];
@@ -2729,7 +2739,7 @@ if (isCpu!T)
     cycles = 2 + decimal;
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!decimal(If!(isStrict!T)(
+           If!decimal(If!(strict)(
                 [Bus(Action.READ, pc+2)]));
 }
 
@@ -2751,7 +2761,7 @@ if (isCpu!T)
     cycles = 2 + branch + px;
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!branch(If!(isStrict!T)(
+           If!branch(If!(strict)(
                 [Bus(Action.READ, pc+2)] ~
                 If!px(
                     [Bus(Action.READ, wrongAddr)])));
@@ -2806,7 +2816,7 @@ if (isCpu!T)
     cycles = 3; // + accesses_end
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 If!(isNMOS!T)(
                     [Bus(Action.READ, op1)]) ~
                 If!(isCMOS!T)(
@@ -2862,7 +2872,7 @@ if (isCpu!T)
     cycles = 5; // + accesses_end
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 If!(isNMOS!T)(
                     [Bus(Action.READ, op1)]) ~
                 If!(isCMOS!T)(
@@ -2963,14 +2973,14 @@ if (isCpu!T)
     if (guess != right)
     {
         cycles += 1;
-        return If!(isStrict!T)(
+        return If!(strict)(
                     If!(isNMOS!T)([Bus(Action.READ, guess)]) ~
                     If!(isCMOS!T)([Bus(Action.READ, pc + opLen)])); // XXX
     }
     else if (noShortcut)
     {
         cycles += 1;
-        return If!(isStrict!T)([Bus(Action.READ, guess)]);
+        return If!(strict)([Bus(Action.READ, guess)]);
     }
     else
     {
@@ -2999,13 +3009,13 @@ if (isCpu!T)
     cycles += (rmw ? 3 : (write ? 1 : (1 + decimal)));
     return If!read(
                 [Bus(Action.READ, addr)] ~
-                If!decimal(If!(isStrict!T)(
+                If!decimal(If!(strict)(
                     [Bus(Action.READ, pc + opLen)]))) ~
            If!write(
                 [Bus(Action.WRITE, addr)]) ~
            If!rmw(
                 [Bus(Action.READ, addr)] ~
-                If!(isStrict!T)(
+                If!(strict)(
                     If!(isNMOS!T)(
                         [Bus(Action.WRITE, addr)]) ~
                     If!(isCMOS!T)(
@@ -3029,12 +3039,12 @@ if (isCpu!T)
 
     cycles = 6;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1),
                  Bus(Action.READ, sp)]) ~
            [Bus(Action.READ, sp1),
             Bus(Action.READ, sp2)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, ret)]);
 }
 
@@ -3054,7 +3064,7 @@ if (isCpu!T)
 
     cycles = 6;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1),
                  Bus(Action.READ, sp)]) ~
            [Bus(Action.READ, sp1),
@@ -3077,7 +3087,7 @@ if (isCpu!T)
 
     cycles = 7;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1)]) ~
            [Bus(Action.WRITE, sp),
             Bus(Action.WRITE, sp1),
@@ -3101,7 +3111,7 @@ if (isCpu!T)
     cycles = 6;
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, sp)]) ~
            [Bus(Action.WRITE, sp),
             Bus(Action.WRITE, sp1),
@@ -3140,7 +3150,7 @@ if (isCpu!T)
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1),
             Bus(Action.READ, pc+2)] ~
-           If!(isStrict!T)(If!(isCMOS!T)(
+           If!(strict)(If!(isCMOS!T)(
                 [Bus(Action.READ, pc+3)])) ~ // XXX
            [Bus(Action.READ, ial),
             Bus(Action.READ, iah)];
@@ -3170,7 +3180,7 @@ if (isCpu!T && isCMOS!T)
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1),
             Bus(Action.READ, pc+2)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+3)]) ~ // XXX
            [Bus(Action.READ, ial),
             Bus(Action.READ, iah)];
@@ -3196,7 +3206,7 @@ if (isCpu!T && isCMOS!T)
     cycles = 8;
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+2),
                  Bus(Action.READ, weird),
                  Bus(Action.READ, 0xFFFF),
@@ -3335,16 +3345,6 @@ void test_opcode_timing(T)(ubyte opcode, busreport report)
     auto run = connect(setup, run_timing_test!T(expected, report));
     run.run(opcode);
 }
-
-
-version(Strict)
-    enum testStrict = true;
-else
-    enum testStrict = false;
-version(Cumulative)
-    enum testCumulative = true;
-else
-    enum testCumulative = false;
 
 
 struct CheckOptions

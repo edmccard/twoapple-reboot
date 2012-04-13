@@ -29,17 +29,6 @@ import std.array, std.format;
 import cpu.ctfe_d6502;
 
 
-enum Strict : bool
-{
-    no, yes
-}
-
-enum Cumulative : bool
-{
-    no, yes
-}
-
-
 template is6502(T)
 {
     enum is6502 = __traits(getMember, T, "_chip") == "6502";
@@ -51,13 +40,11 @@ template is65C02(T)
 }
 
 
-final class Cpu(string chip, bool strict, bool cumulative)
+final class Cpu(string chip)
 {
     static assert(chip == "6502" || chip == "65C02" || chip == "65c02");
     enum _isCpu = true;
     enum _chip = (chip == "6502" ? "6502" : "65C02");
-    enum _isStrict = strict;
-    enum _isCumulative = cumulative;
 
     struct _Mem
     {
@@ -71,7 +58,7 @@ final class Cpu(string chip, bool strict, bool cumulative)
 
     struct _Clock
     {
-        static if (cumulative)
+        version(Cumulative)
             /*
              * Updates the number of cycles executed. Called just
              * prior to the final read/write action of each opcode.
@@ -97,7 +84,7 @@ final class Cpu(string chip, bool strict, bool cumulative)
     version(OpFunctions) {}
     else
     {
-        static if (cumulative) { int cycles; }
+        version(Cumulative) { int cycles; }
         ushort address, base;
         ubyte data;
     }
@@ -138,23 +125,26 @@ final class Cpu(string chip, bool strict, bool cumulative)
         ubyte opcode;
         static if (!opArray)
         {
-            static if (cumulative) { int cycles; }
+            version(Cumulative) { int cycles; }
             ushort address, base;
             ubyte data;
         }
         do {
-            static if (cumulative && !opArray)
-                cycles = 1;
-                // XXX figure out final cycle stuff
-            static if (!cumulative)
+            version(Cumulative)
+            {
+                static if (!opArray) cycles = 1;
+            }
+            else
+            {
                 clock.tick();
+            }
             // XXX check signals, NMI/IRQ delays, etc.
             opcode = memory.read(PC++);
-            mixin(OpExecute(_chip, strict, cumulative));
+            mixin(OpExecute(_chip));
         } while (keepRunning);
     }
 
-    version(OpDelegates) mixin (OpBodies(_chip, strict, cumulative));
+    version(OpDelegates) mixin (OpBodies(_chip));
 }
 
 
@@ -163,8 +153,8 @@ enum ushort IRQ_VECTOR = 0xFFFE;
 
 private:
 
-version(OpFunctions) mixin(OpBodies("6502", vStrict, vCumulative));
-version(OpFunctions) mixin(OpBodies("65C02", vStrict, vCumulative));
+version(OpFunctions) mixin(OpBodies("6502"));
+version(OpFunctions) mixin(OpBodies("65C02"));
 
 
 //alias Cpu!("6502", false, false) T1;
