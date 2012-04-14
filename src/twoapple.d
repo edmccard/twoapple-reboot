@@ -20,7 +20,7 @@
 
 import std.stdio;
 
-import d6502.base;
+import cpu.d6502;
 import timer;
 import memory;
 import system.base;
@@ -38,20 +38,6 @@ import peripheral.base;
 import peripheral.diskii;
 import peripheral.langcard;
 import peripheral.saturn128;
-
-class TestSystem : II
-{
-    this(ubyte[] romDump)
-    {
-        super(romDump);
-    }
-
-    void setRom(ubyte[] rom_data)
-    {
-        uint rom_len = cast(uint)rom_data.length;
-        memory_.mainRom.data_[0..12288] = rom_data[(rom_len - 12288)..rom_len];
-    }
-}
 
 import std.file;
 import std.string;
@@ -86,11 +72,11 @@ void main(string[] args)
     TwoappleFile romFile = TwoappleFilePicker.open("ROM file", &checkRomFile);
     if (romFile is null) return;
 
-    System sys;
+    SystemBase sys;
     if ((args.length > 1) && (args[1] == "--iie"))
-        sys = new IIe(cast(ubyte[])std.file.read(romFile.fileName));
+        sys = new System!"65C02"(cast(ubyte[])std.file.read(romFile.fileName));
     else
-        sys = new II(cast(ubyte[])std.file.read(romFile.fileName));
+        sys = new System!"6502"(cast(ubyte[])std.file.read(romFile.fileName));
     appWindow.initSystem(sys);
     // XXX hack
     appWindow.configChanged = true;
