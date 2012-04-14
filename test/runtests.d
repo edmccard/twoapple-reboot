@@ -6,10 +6,9 @@ enum OpDefs
 {
     None,
     Delegates = 1,
-    Functions = 2,
-    Switch = 4,
-    NestedSwitch = 8,
-    All = 15
+    Switch = 2,
+    NestedSwitch = 4,
+    All = 7
 }
 
 enum Tests
@@ -39,7 +38,6 @@ version(DigitalMars)
     {
         defStrings = [
             OpDefs.Delegates:" -version=OpDelegates",
-            OpDefs.Functions:" -version=OpFunctions",
             OpDefs.Switch:" -version=OpSwitch",
             OpDefs.NestedSwitch:" -version=OpNestedSwitch"
         ];
@@ -83,7 +81,7 @@ void main(string[] args)
         writeln(
 `Options:
    --test=type   Func, Bus, Dec, or All
-   --def=style   Delegates, Functions, Switch, or NestedSwitch
+   --def=style   Delegates, Switch, or NestedSwitch
    --op=num      test opcode 'num' (num is hex)
    --op=name     test all opcodes named 'name'
    --addr=mode   test all opcodes with addressing mode 'mode'
@@ -136,7 +134,7 @@ void runTest(OpDefs def, Tests test, string[] args)
             writeln("With strict=", s, " cumulative=", c);
             string cmdline = defStrings[def] ~ stStrings[s] ~ cmStrings[c] ~
                              fNames[test] ~ join(args, " ");
-            system("rdmd --force -I.. -I../src " ~ cmdline);
+            system("rdmd --force -I.. -I../src -version=RunTest" ~ cmdline);
         }
     }
 }

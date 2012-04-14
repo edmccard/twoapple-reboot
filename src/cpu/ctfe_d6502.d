@@ -23,17 +23,10 @@ version(OpDelegates)
     enum opArray = true;
 }
 
-// OpFunctions: each opcode is a free function with a Cpu argument.
-version(OpFunctions)
-{
-    enum versionCheck = 2;
-    enum opArray = true;
-}
-
 // OpSwitch: each opcode is inlined in a 256-case switch.
 version(OpSwitch)
 {
-    enum versionCheck = 3;
+    enum versionCheck = 2;
     enum opArray = false;
 }
 
@@ -45,7 +38,7 @@ version(OpSwitch)
  */
 version(OpNestedSwitch)
 {
-    enum versionCheck = 4;
+    enum versionCheck = 3;
     enum opArray = false;
 }
 
@@ -59,71 +52,37 @@ string OpArrayDef()
 {
     version(OpDelegates)
         return q{void delegate()[256] opcodes;};
-    else version(OpFunctions)
-        return q{void function(typeof(this))[256] opcodes;};
     else
         return "";
 }
 
 string OpArrayInit()
 {
-    static if (!opArray) return "";
-    else
+    string ret;
+    foreach (op; 0..256)
     {
-        string ret;
-        foreach (op; 0..256)
-        {
-            version(OpDelegates)
-                ret ~= Fmt("opcodes[0x#] = &opcode_#;\n",
-                           Hex2(op), Hex2(op));
-            version(OpFunctions)
-                ret ~= Fmt("opcodes[0x#] = &opcode_#!(typeof(this));\n",
-                           Hex2(op), Hex2(op));
-        }
-        return ret;
+        ret ~= Fmt("opcodes[0x#] = &opcode_#;\n",
+                   Hex2(op), Hex2(op));
     }
+    return ret;
 }
 
-string OpBodies(string chip)
+string OpMethods(string chip)
 {
-    static if (!opArray) return "";
-    else
+    string ret;
+    foreach (op; 0..256)
     {
-        string ret;
-        foreach (op; 0..256)
-        {
-            version(OpDelegates)
-                ret ~= "final void opcode_" ~ Hex2(op) ~ "()\n{\n" ~
-                       If!(cumulative)("int cycles = 1;\n") ~
-                       OpBody(op, chip) ~ "}\n";
-            version(OpFunctions)
-                ret ~= "void opcode_" ~ Hex2(op) ~
-                       "(T)(T cpu) if (is" ~ chip ~ "!T)\n{\n" ~
-                       If!(cumulative)("int cycles = 1;\n") ~
-                       OpBody(op, chip) ~ "}\n";
-        }
-/+
-        foreach (op; 13..256)
-            version(OpDelegates)
-                ret ~= "final void opcode_" ~ Hex2(op) ~ "()\n{\n" ~
-                       If!(cumulative)("int cycles = 1;\n") ~
-                       "" ~ "}\n";
-            version(OpFunctions)
-                ret ~= "void opcode_" ~ Hex2(op) ~
-                       "(T)(T cpu) if (is" ~ chip ~ "!T)\n{\n" ~
-                       If!(cumulative)("int cycles = 1;\n") ~
-                       "" ~ "}\n";
-+/
-        return ret;
+        ret ~= "final void opcode_" ~ Hex2(op) ~ "()\n{\n" ~
+               If!(cumulative)("int cycles = 1;\n") ~
+               OpBody(op, chip) ~ "}\n";
     }
+    return ret;
 }
 
 string OpExecute(string chip)
 {
     version(OpDelegates)
         return q{opcodes[opcode]();};
-    version(OpFunctions)
-        return q{opcodes[opcode](this);};
     version(OpSwitch)
         return Switch256(chip);
     version(OpNestedSwitch)
@@ -900,42 +859,17 @@ string Strange_Undoc(string val)
 
 string Local(string type)
 {
-    version(OpFunctions)
-        return type ~ " ";
-    else
-        return "";
-/+
-    version(OpSwitch)
-        return "";
-    else version(OpNestedSwitch)
-        return "";
-    else
-        return  type ~ " ";
-+/
+    return "";
 }
 
 string Local(string type, string var)
 {
-    version(OpFunctions)
-        return type ~ " " ~ var;
-    else
-        return var;
-/+
-    version(OpSwitch)
-        return var;
-    else version(OpNestedSwitch)
-        return var;
-    else
-        return type ~ " " ~ var;
-+/
+    return var;
 }
 
 string Attr(string var)
 {
-    version(OpFunctions)
-        return "cpu." ~ var;
-    else
-        return var;
+    return var;
 }
 
 

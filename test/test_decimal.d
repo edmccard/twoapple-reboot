@@ -214,10 +214,20 @@ if (isCpu!T)
         mem.write(0x8055, 0x84);
     }
 
-    auto cpu = new T();
-    connectMem(cpu, mem);
+version(Benchmark)
+{
+    auto runner = new BreakRunner(mem);
+    auto cpu = new T(runner, runner);
     setPC(cpu, 0x8000);
+    try { cpu.run(true); } catch (StopException e) {}
+}
+else
+{
+    auto cpu = new T(null, null);
+    setPC(cpu, 0x8000);
+    connectMem(cpu, mem);
     runUntilBRK(cpu);
+}
     if (mem[0x8003])
     {
         // TODO: check data block to find out what failed exactly
@@ -229,9 +239,34 @@ if (isCpu!T)
 version(Benchmark)
 {
     import std.datetime, std.stdio;
+
+    final class BreakRunner
+    {
+        TestMemory* mem;
+
+        this(ref TestMemory mem)
+        {
+            this.mem = &mem;
+        }
+
+        final ubyte read(ushort addr)
+        {
+            if (addr == 0xFFFE) throw new StopException("BRK");
+            return mem.read(addr);
+        }
+
+        final void write(ushort addr, ubyte val)
+        {
+            mem.write(addr, val);
+        }
+
+        static if (cumulative) { final void tick(int) {} }
+        else { final void tick() {} }
+    }
+
     void f0()
     {
-        testDecimalMode!(CPU!("65C02"))();
+        testDecimalMode!(CPU!("65C02", BreakRunner, BreakRunner))();
     }
 
     void main()

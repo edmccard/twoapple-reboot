@@ -40,18 +40,25 @@ template is65C02(T)
 }
 
 
-final class Cpu(string chip)
+final class Cpu(string chip, MEM, CLK)
+if (__traits(compiles, {
+    MEM m; ubyte val; ushort addr;
+    val = m.read(addr);
+    m.write(addr, val);
+    CLK c; int cycles;
+    version(Cumulative) c.tick(cycles);
+    else c.tick();
+}))
 {
     static assert(chip == "6502" || chip == "65C02" || chip == "65c02");
     enum _isCpu = true;
     enum _chip = (chip == "6502" ? "6502" : "65C02");
 
+version(RunTest)
+{
     struct _Mem
     {
-        // Reads a value from system memory.
         ubyte delegate(ushort addr) read;
-
-        // Writes a value to system memory.
         void delegate(ushort addr, ubyte val) write;
     }
     _Mem memory;
@@ -59,19 +66,17 @@ final class Cpu(string chip)
     struct _Clock
     {
         version(Cumulative)
-            /*
-             * Updates the number of cycles executed. Called just
-             * prior to the final read/write action of each opcode.
-             */
             void delegate(int cycles) tick;
         else
-            /*
-             * Increments the number of cycles executed. Called prior
-             * to each read/write action.
-             */
             void delegate() tick;
     }
     _Clock clock;
+}
+else
+{
+    MEM memory;
+    CLK clock;
+}
 
     ubyte A, X, Y, S;
     ushort PC;
@@ -80,10 +85,9 @@ final class Cpu(string chip)
     ubyte N, Z;
     bool V, D, I, C;
 
-    static if (opArray) { mixin(OpArrayDef()); }
-    version(OpFunctions) {}
-    else
+    version(OpDelegates)
     {
+        mixin(OpArrayDef());
         version(Cumulative) { int cycles; }
         ushort address, base;
         ubyte data;
@@ -92,9 +96,15 @@ final class Cpu(string chip)
     // TODO: other methods for stopping cpu
     bool keepRunning;
 
-    this()
+    this(MEM memory, CLK clock)
     {
-        static if (opArray) mixin(OpArrayInit());
+        version(RunTest) {}
+        else
+        {
+            this.memory = memory;
+            this.clock = clock;
+        }
+        version(OpDelegates) mixin(OpArrayInit());
     }
 
     final void statusFromByte(ubyte p)
@@ -144,17 +154,11 @@ final class Cpu(string chip)
         } while (keepRunning);
     }
 
-    version(OpDelegates) mixin (OpBodies(_chip));
+    version(OpDelegates) mixin (OpMethods(_chip));
 }
 
 
 enum ushort IRQ_VECTOR = 0xFFFE;
-
-
-private:
-
-version(OpFunctions) mixin(OpBodies("6502"));
-version(OpFunctions) mixin(OpBodies("65C02"));
 
 
 //alias Cpu!("6502", false, false) T1;

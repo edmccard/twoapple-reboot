@@ -10,15 +10,7 @@ import std.conv, std.exception, std.random, std.string, std.traits;
 
 public import cpu.d6502 : Cpu, is6502, is65C02;
 
-
-version(Strict)
-    enum strict = true;
-else
-    enum strict = false;
-version(Cumulative)
-    enum cumulative = true;
-else
-    enum cumulative = false;
+import test.base : strict, cumulative;
 
 
 // True if T is the type of a cpu.
@@ -40,19 +32,29 @@ template isCMOS(T)
 }
 
 
+// Not used in test mode, but needed to instantiate a cpu.
+class DummyMem
+{
+    ubyte read(ushort) { return 0; }
+    void write(ushort, ubyte) {}
+    static if (cumulative) { void tick(int) {} }
+    else { void tick() {} }
+}
+
+
 /*
  * The type of a cpu, based on its architecture (6502 or 65C02).
  */
-template CPU(string arch)
+template CPU(string arch, M = DummyMem, C = DummyMem)
 {
-    alias Cpu!(arch) CPU;
+    alias Cpu!(arch, M, C) CPU;
 }
 
 
 auto makeCpu(T)(CpuInfo info)
 if (isCpu!T)
 {
-    auto cpu = new T();
+    auto cpu = new T(null, null);
     cpu.PC = info.PC;
     cpu.S = info.SP;
     cpu.statusFromByte(info.S);
