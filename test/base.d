@@ -3414,7 +3414,7 @@ struct CheckOptions
                 op = op[2..$];
             if (isNumeric(op))
             {
-                int code = to!int(op, 16);
+                int code = parse!(int, string)(op, 16);
                 if (code >= 0x00 && code <= 0xFF)
                 {
                     codes6502 ~= [cast(ubyte)code];
