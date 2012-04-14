@@ -93,9 +93,6 @@ else
         ubyte data;
     }
 
-    // TODO: other methods for stopping cpu
-    bool keepRunning;
-
     this(MEM memory, CLK clock)
     {
         version(RunTest) {}
@@ -128,10 +125,11 @@ else
                (N & 0x80);
     }
 
+    bool keepRunning;
+
     final void run(bool continuous)
     {
         keepRunning = continuous;
-        // TODO debugging info?
         ubyte opcode;
         static if (!opArray)
         {
@@ -139,7 +137,8 @@ else
             ushort address, base;
             ubyte data;
         }
-        do {
+        do
+        {
             version(Cumulative)
             {
                 static if (!opArray) cycles = 1;

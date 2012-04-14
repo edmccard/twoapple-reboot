@@ -218,8 +218,9 @@ version(Benchmark)
 {
     auto runner = new BreakRunner(mem);
     auto cpu = new T(runner, runner);
+    runner.keepRunning = &cpu.keepRunning;
     setPC(cpu, 0x8000);
-    try { cpu.run(true); } catch (StopException e) {}
+    cpu.run(true);
 }
 else
 {
@@ -243,6 +244,7 @@ version(Benchmark)
     final class BreakRunner
     {
         TestMemory* mem;
+        bool* keepRunning;
 
         this(ref TestMemory mem)
         {
@@ -251,8 +253,16 @@ version(Benchmark)
 
         final ubyte read(ushort addr)
         {
-            if (addr == 0xFFFE) throw new StopException("BRK");
-            return mem.read(addr);
+            if (addr == 0xfffe)
+            {
+                *keepRunning = false;
+                return 0x00;
+            }
+            else if (addr == 0xffff)
+            {
+                return 0x80;
+            }
+            else return mem.read(addr);
         }
 
         final void write(ushort addr, ubyte val)
