@@ -211,10 +211,21 @@ if (isCpu!T)
         mem.write(0x8055, 0x84);
     }
 
-    auto cpu = new T();
-    connectMem(cpu, mem);
+version(Benchmark)
+{
+    auto runner = new BreakRunner(mem);
+    auto cpu = new T(runner, runner);
+    runner.keepRunning = &cpu.keepRunning;
     setPC(cpu, 0x8000);
+    cpu.run(true);
+}
+else
+{
+    auto cpu = makeCpu!T();
+    setPC(cpu, 0x8000);
+    connectMem(cpu, mem);
     runUntilBRK(cpu);
+}
     if (mem[0x8003])
     {
         // TODO: check data block to find out what failed exactly
@@ -226,9 +237,43 @@ if (isCpu!T)
 version(Benchmark)
 {
     import std.datetime, std.stdio;
+
+    final class BreakRunner
+    {
+        TestMemory* mem;
+        bool* keepRunning;
+
+        this(ref TestMemory mem)
+        {
+            this.mem = &mem;
+        }
+
+        final ubyte read(ushort addr)
+        {
+            if (addr == 0xfffe)
+            {
+                *keepRunning = false;
+                return 0x00;
+            }
+            else if (addr == 0xffff)
+            {
+                return 0x80;
+            }
+            else return mem.read(addr);
+        }
+
+        final void write(ushort addr, ubyte val)
+        {
+            mem.write(addr, val);
+        }
+
+        static if (cumulative) { final void tick(int) {} }
+        else { final void tick() {} }
+    }
+
     void f0()
     {
-        testDecimalMode!(CPU!("65C02", false, false))();
+        testDecimalMode!(CPU!("65C02", BreakRunner, BreakRunner))();
     }
 
     void main()
@@ -243,24 +288,10 @@ else
 {
     void main()
     {
-        writeln("Testing decimal mode, NMOS(Strict.no, Cumulative.no)");
-        testDecimalMode!(CPU!("6502", false, false))();
-        writeln("Testing decimal mode, CMOS(Strict.no, Cumulative.no)");
-        testDecimalMode!(CPU!("65C02", false, false))();
+        writeln("Testing decimal mode, 6502");
+        testDecimalMode!(CPU!("6502"))();
 
-        writeln("Testing decimal mode, NMOS(Strict.no, Cumulative.yes)");
-        testDecimalMode!(CPU!("6502", false, true))();
-        writeln("Testing decimal mode, CMOS(Strict.no, Cumulative.yes)");
-        testDecimalMode!(CPU!("65C02", false, true))();
-
-        writeln("Testing decimal mode, NMOS(Strict.yes, Cumulative.no)");
-        testDecimalMode!(CPU!("6502", true, false))();
-        writeln("Testing decimal mode, CMOS(Strict.yes, Cumulative.no)");
-        testDecimalMode!(CPU!("65C02", true, false))();
-
-        writeln("Testing decimal mode, NMOS(Strict.yes, Cumulative.yes)");
-        testDecimalMode!(CPU!("6502", true, true))();
-        writeln("Testing decimal mode, CMOS(Strict.yes, Cumulative.yes)");
-        testDecimalMode!(CPU!("65C02", true, true))();
+        writeln("Testing decimal mode, 65C02");
+        testDecimalMode!(CPU!("65C02"))();
     }
 }

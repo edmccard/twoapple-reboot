@@ -23,9 +23,6 @@
 module system.peripheral;
 
 import memory;
-import d6502.base;
-
-private alias d6502.base.CpuBase!(Strict.no, Cumulative.no) CpuBase;
 
 import peripheral.base;
 import peripheral.diskii;
@@ -36,7 +33,7 @@ class Peripherals
 {
     Peripheral[8] cards;
 
-    abstract void install(CpuBase cpu, AddressDecoder decoder, Rom mainRom);
+    abstract void install(AddressDecoder decoder, Rom mainRom);
 
     void reboot()
     {
@@ -59,7 +56,7 @@ class Peripherals
 
 class Peripherals_II : Peripherals
 {
-    void install(CpuBase cpu, AddressDecoder decoder, Rom mainRom)
+    void install(AddressDecoder decoder, Rom mainRom)
     {
         auto diskController = new Controller();
         cards[6] = diskController;    // XXX
@@ -78,7 +75,7 @@ class Peripherals_II : Peripherals
 
 class Peripherals_IIe : Peripherals
 {
-    void install(CpuBase cpu, AddressDecoder decoder, Rom mainRom)
+    void install(AddressDecoder decoder, Rom mainRom)
     {
         auto diskController = new Controller();
         cards[6] = diskController;    // XXX

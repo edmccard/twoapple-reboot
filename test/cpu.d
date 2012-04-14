@@ -8,66 +8,71 @@ module test.cpu;
 
 import std.conv, std.exception, std.random, std.string, std.traits;
 
-public import d6502.nmosundoc : NmosUndoc;
-public import d6502.cmos : Cmos;
+public import cpu.d6502 : Cpu, is6502, is65C02;
+
+import test.base : strict, cumulative;
 
 
 // True if T is the type of a cpu.
 template isCpu(T)
 {
-    enum isCpu = __traits(hasMember, T, "_isCpuBase");
+    enum isCpu = __traits(hasMember, T, "_isCpu");
 }
 
 // True if the cpu type T represents a 6502.
 template isNMOS(T)
 {
-    enum isNMOS = __traits(hasMember, T, "_isNMOS");
+    enum isNMOS = is6502!T;
 }
 
 // True if the cpu type T represents a 65C02.
 template isCMOS(T)
 {
-    enum isCMOS = __traits(hasMember, T, "_isCMOS");
+    enum isCMOS = is65C02!T;
 }
 
-// True if the cpu type T accesses memory on every cycle.
-template isStrict(T)
-{
-    enum isStrict = __traits(hasMember, T, "_isStrict");
-}
 
-// True if the cpu type T aggregates ticks.
-template isCumulative(T)
+class TestIO
 {
-    enum isCumulative = __traits(hasMember, T, "_isCumulative");
+    ubyte delegate(ushort) dread;
+    ubyte read(ushort addr) { return dread(addr); }
+
+    void delegate(ushort, ubyte) dwrite;
+    void write(ushort addr, ubyte val) { dwrite(addr, val); }
+
+    static if (cumulative)
+    {
+        void delegate(int) dtick;
+        void tick(int cycles) { dtick(cycles); }
+    }
+    else
+    {
+        void delegate() dtick;
+        void tick() { dtick(); }
+    }
 }
 
 
 /*
- * The type of a cpu, based on its architecture (6502 or 65C02) and
- * its timing characteristics (strict or not bus access, cumulative or
- * not cycle reporting).
+ * The type of a cpu, based on its architecture (6502 or 65C02).
  */
-template CPU(string arch, bool strict, bool cumulative)
+template CPU(string arch, M = TestIO, C = TestIO)
 {
-    static if (arch == "65c02" || arch == "65C02")
-        alias Cmos!(strict, cumulative) CPU;
-    else static if (arch == "6502")
-        alias NmosUndoc!(strict, cumulative) CPU;
-    else static assert(0);
+    alias Cpu!(arch, M, C) CPU;
 }
 
 
-auto makeCpu(T)(CpuInfo info)
+auto makeCpu(T)(CpuInfo info = CpuInfo())
 if (isCpu!T)
 {
-    auto cpu = new T();
-    cpu.programCounter = info.PC;
-    cpu.stackPointer = info.SP;
-    cpu.flag.fromByte(info.S);
-    cpu.accumulator = info.A;
-    cpu.xIndex = info.X;
-    cpu.yIndex = info.Y;
+    auto tio = new TestIO();
+    auto cpu = new T(tio, tio);
+    cpu.PC = info.PC;
+    cpu.S = info.SP;
+    cpu.statusFromByte(info.S);
+    cpu.A = info.A;
+    cpu.X = info.X;
+    cpu.Y = info.Y;
     return cpu;
 }
 
@@ -75,14 +80,14 @@ if (isCpu!T)
 void connectMem(T, S)(T cpu, ref S mem)
 if (isCpu!T)
 {
-    static if (isCumulative!T)
+    static if (cumulative)
         void tick(int cycles) {}
     else
         void tick() {}
 
-    cpu.memoryRead = &mem.read;
-    cpu.memoryWrite = &mem.write;
-    cpu.tick = &tick;
+    cpu.memory.dread = &mem.read;
+    cpu.memory.dwrite = &mem.write;
+    cpu.clock.dtick = &tick;
 }
 
 
@@ -99,9 +104,9 @@ auto recordCycles(T)(T cpu)
 if (isCpu!T)
 {
     auto cycles = new int;
-    auto wrappedTick = cpu.tick;
+    auto wrappedTick = cpu.clock.dtick;
 
-    static if (isCumulative!T)
+    static if (cumulative)
     {
         void tick(int cyc)
         {
@@ -117,7 +122,7 @@ if (isCpu!T)
             wrappedTick();
         }
     }
-    cpu.tick = &tick;
+    cpu.clock.dtick = &tick;
 
     return constRef(cycles);
 }
@@ -155,9 +160,9 @@ if (isCpu!T)
     auto record = new Bus[actions];
     int c;
 
-    enforce(cpu.memoryRead !is null && cpu.memoryWrite !is null);
-    auto wrappedRead = cpu.memoryRead;
-    auto wrappedWrite = cpu.memoryWrite;
+    enforce(cpu.memory.dread !is null && cpu.memory.dwrite !is null);
+    auto wrappedRead = cpu.memory.dread;
+    auto wrappedWrite = cpu.memory.dwrite;
 
     ubyte read(ushort addr)
     {
@@ -177,8 +182,8 @@ if (isCpu!T)
         wrappedWrite(addr, val);
     }
 
-    cpu.memoryRead = &read;
-    cpu.memoryWrite = &write;
+    cpu.memory.dread = &read;
+    cpu.memory.dwrite = &write;
 
     return record;
 }
@@ -210,8 +215,8 @@ enum Action : ushort { NONE, READ, WRITE }
 void runUntilBRK(T)(T cpu)
 if (isCpu!T)
 {
-    assert(cpu.memoryRead !is null);
-    auto wrappedRead = cpu.memoryRead;
+    assert(cpu.memory.dread !is null);
+    auto wrappedRead = cpu.memory.dread;
 
     ubyte read(ushort addr)
     {
@@ -219,7 +224,7 @@ if (isCpu!T)
         return wrappedRead(addr);
     }
 
-    cpu.memoryRead = &read;
+    cpu.memory.dread = &read;
 
     try { cpu.run(true); } catch (StopException e) {}
 }
@@ -244,32 +249,27 @@ struct CpuInfo
 
     string toString() const
     {
-        return format("PC %0.4X SP %0.2X S %0.2X A %0.2X X %0.2X Y %0.2X",
+        return format("PC %0.4X SP %0.2X S %0.8b A %0.2X X %0.2X Y %0.2X",
                       PC, SP, S, A, X, Y);
     }
 
     static CpuInfo fromCpu(T)(T cpu)
     {
         CpuInfo info;
-        info.PC = cpu.programCounter;
-        info.SP = cpu.stackPointer;
-        info.A = cpu.accumulator;
-        info.X = cpu.xIndex;
-        info.Y = cpu.yIndex;
-        info.S = cpu.flag.toByte();
+        info.PC = cpu.PC;
+        info.SP = cpu.S;
+        info.A = cpu.A;
+        info.X = cpu.X;
+        info.Y = cpu.Y;
+        info.S = cpu.statusToByte();
         return info;
     }
 }
 
 
 // Sets the program counter.
-void setPC(T)(T cpu, int addr)
-if (isCpu!T)
-{
-    cpu.programCounter = cast(ushort)addr;
-}
-
-void setPC(T : CpuInfo)(ref T cpu, int addr)
+void setPC(T)(ref T cpu, int addr)
+if (isCpu!T || is(T == CpuInfo))
 {
     cpu.PC = cast(ushort)addr;
 }
@@ -279,14 +279,10 @@ void incPC(T : CpuInfo)(ref T cpu, int amt = 1)
     cpu.PC = pageCrossAdd(cpu.PC, amt);
 }
 
-// Returns the program counter.
-ushort getPC(T)(T cpu)
-if (isCpu!T)
-{
-    return cpu.programCounter;
-}
 
-ushort getPC(T : CpuInfo)(ref T cpu)
+// Returns the program counter.
+ushort getPC(T)(ref T cpu)
+if (isCpu!T || is(T == CpuInfo))
 {
     return cpu.PC;
 }
@@ -302,7 +298,7 @@ void setSP(T)(T cpu, int val)
 if (isCpu!T)
 {
     assert(val < 0x0200);
-    cpu.stackPointer = cast(ubyte)val;
+    cpu.S = cast(ubyte)val;
 }
 
 void setSP(T : CpuInfo)(ref T cpu, int val)
@@ -329,7 +325,7 @@ void decSP(T : CpuInfo)(ref T cpu, int amt = -1)
 ushort getSP(T)(T cpu)
 if (isCpu!T)
 {
-    return 0x100 | cpu.stackPointer;
+    return 0x100 | cpu.S;
 }
 
 ushort getSP(T : CpuInfo)(ref T cpu)
@@ -369,75 +365,48 @@ if (isCpu!T || is(T == CpuInfo))
 }
 
 // Sets the A register.
-void setA(T)(T cpu, int val)
-if (isCpu!T)
-{
-    cpu.accumulator = cast(ubyte)val;
-}
-
-void setA(T : CpuInfo)(ref T cpu, int val)
+void setA(T)(ref T cpu, int val)
+if (isCpu!T || is(T == CpuInfo))
 {
     cpu.A = cast(ubyte)val;
 }
 
-// Returns the A register.
-ubyte getA(T)(T cpu, int val)
-if (isCpu!T)
-{
-    return cpu.accumulator;
-}
 
-ubyte getA(T : CpuInfo)(ref T cpu)
+// Returns the A register.
+ubyte getA(T)(ref T cpu)
+if (isCpu!T || is(T == CpuInfo))
 {
     return cpu.A;
 }
 
 
 // Sets the X register.
-void setX(T)(T cpu, int val)
-if (isCpu!T)
-{
-    cpu.xIndex = cast(ubyte)val;
-}
-
-void setX(T : CpuInfo)(ref T cpu, int val)
+void setX(T)(ref T cpu, int val)
+if (isCpu!T || is(T == CpuInfo))
 {
     cpu.X = cast(ubyte)val;
 }
 
-// Returns the X register.
-ubyte getX(T)(T cpu)
-if (isCpu!T)
-{
-    return cpu.xIndex;
-}
 
-ubyte getX(T : CpuInfo)(ref T cpu)
+// Returns the X register.
+ubyte getX(T)(ref T cpu)
+if (isCpu!T || is(T == CpuInfo))
 {
     return cpu.X;
 }
 
 
 // Sets the Y register.
-void setY(T)(T cpu, int val)
-if (isCpu!T)
-{
-    cpu.yIndex = cast(ubyte)val;
-}
-
-void setY(T : CpuInfo)(ref T cpu, int val)
+void setY(T)(ref T cpu, int val)
+if (isCpu!T || is(T == CpuInfo))
 {
     cpu.Y = cast(ubyte)val;
 }
 
-// Returns the Y register.
-ubyte getY(T)(T cpu)
-if (isCpu!T)
-{
-    return cpu.yIndex;
-}
 
-ubyte getY(T : CpuInfo)(ref T cpu)
+// Returns the Y register.
+ubyte getY(T)(ref T cpu)
+if (isCpu!T || is(T == CpuInfo))
 {
     return cpu.Y;
 }
@@ -472,9 +441,9 @@ string flagToString(Flag f)
 void setFlag(T)(T cpu, Flag[] flags...)
 if (isCpu!T)
 {
-    auto reg = cpu.flag.toByte();
+    auto reg = cpu.statusToByte();
     foreach (flag; flags) reg |= flag;
-    cpu.flag.fromByte(reg);
+    cpu.statusFromByte(reg);
 }
 
 void setFlag(T : CpuInfo)(ref T cpu, Flag[] flags...)
@@ -486,9 +455,9 @@ void setFlag(T : CpuInfo)(ref T cpu, Flag[] flags...)
 void clearFlag(T)(T cpu, Flag[] flags...)
 if (isCpu!T)
 {
-    auto reg = cpu.flag.toByte();
+    auto reg = cpu.statusToByte();
     foreach (flag; flags) reg &= ~flag;
-    cpu.flag.fromByte(reg);
+    cpu.statusFromByte(reg);
 }
 
 void clearFlag(T : CpuInfo)(ref T cpu, Flag[] flags...)
@@ -500,7 +469,8 @@ void clearFlag(T : CpuInfo)(ref T cpu, Flag[] flags...)
 bool getFlag(T)(T cpu, Flag f)
 if (isCpu!T)
 {
-    return (cpu.flag.toByte() & f) != 0;
+    return (cpu.statusToByte() & f) != 0;
+    return false;
 }
 
 bool getFlag(T : CpuInfo)(ref T cpu, Flag f)
@@ -513,7 +483,7 @@ bool getFlag(T : CpuInfo)(ref T cpu, Flag f)
 void setStatus(T)(T cpu, int val)
 if (isCpu!T)
 {
-    cpu.flag.fromByte(cast(ubyte)val);
+    cpu.statusFromByte(cast(ubyte)val);
 }
 
 void setStatus(T : CpuInfo)(ref T cpu, int val)
@@ -525,7 +495,8 @@ void setStatus(T : CpuInfo)(ref T cpu, int val)
 ubyte getStatus(T)(T cpu)
 if (isCpu!T)
 {
-    return cpu.flag.toByte();
+    return cpu.statusToByte();
+    return 0;
 }
 
 ubyte getStatus(T : CpuInfo)(ref T cpu)
@@ -604,8 +575,6 @@ if (isCpu!T || is(T == CpuInfo))
         case /*BNE*/ 0xD0: setFlag(cpu, Flag.Z); break;
         case /*BEQ*/ 0xF0: clearFlag(cpu, Flag.Z); break;
         default:
-            if (isCMOS!T)
-                enforce(opcode != 0x80, "BRA can never not branch");
             enforce(0, format("not a branching opcpde %0.2X", opcode));
     }
 }

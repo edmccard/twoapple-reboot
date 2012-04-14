@@ -1,10 +1,130 @@
 module test.base;
 
 
-import std.algorithm, std.array, std.conv, std.exception, std.stdio,
-       std.string;
+import std.algorithm, std.array, std.conv, std.exception, std.getopt,
+       std.stdio, std.string;
 
 import test.cpu, test.opcodes;
+import cpu.data_d6502;
+
+
+version(Strict)
+    enum strict = true;
+else
+    enum strict = false;
+version(Cumulative)
+    enum cumulative = true;
+else
+    enum cumulative = false;
+
+
+/*
+ * A test is a combination of setups, an expectation, a runner, and a
+ * reporter.
+ */
+
+/*
+ * A setup function for a given opcode puts cpu, data, info, and msg
+ * into the appropriate state and then calls the next function (see
+ * testCallNext) with the modified values. To setup multiple
+ * scenarios, just call the next function multiple times.
+ *
+ * Values for cpu registers are set up using the setXXX(cpu, val)
+ * functions; see testCallNext and OpInfo for descriptions of other
+ * types of information that may need to be set up.
+ *
+ * Example:
+ *
+ *   // prepare the accumulator with a value different from expected
+ *   setA(cpu, ~0x10);
+ *   // prepare memory with LDA #$10 at address $1000
+ *   setPC(cpu, 0x1000);
+ *   callNext("LDA immediate, positive", [Block(0x1000, [0xA9, 0x10])]);
+ */
+alias void delegate(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
+                    string msg, TestSetup* next)
+    testsetup;
+
+
+/*
+ * A mixin that simplifies calling the next setup function.
+ *
+ * newMsg will be appended to the current msg and passed to the next
+ * function.
+ *
+ * To place values in memory, pass an array of Blocks as the second
+ * parameter. It will be appended to the current data.
+ */
+template testCallNext()
+{
+    void callNext(string newMsg = "", Block[] newData = [])
+    {
+        if (*next !is null)
+            next.run(opcode, cpu, data ~ newData, info, msg ~ newMsg);
+    }
+}
+
+
+/*
+ * A block of memory with a given base address.
+ *
+ * For example, `Block(0x1000, [0xA9, 0x10])`
+ */
+struct Block
+{
+    const ushort base;
+    const(ubyte[]) data;
+
+    string toString() const
+    {
+        return format("Block(%0.4X, [%s])", base, formatMemory(data));
+    }
+}
+
+
+// Information about expected opcode execution.
+struct OpInfo
+{
+    // The effective address, if any.
+    ushort addr;
+    // The data to be read or written, if any.
+    ubyte data;
+    // The length of the opcode + operands.
+    int len;
+}
+
+
+class TestSetup
+{
+    testsetup setup;
+    TestSetup next;
+
+    auto static opCall(testsetup d)
+    {
+        auto obj = new TestSetup();
+        obj.setup = d;
+        return obj;
+    }
+
+    void run(ubyte opcode, CpuInfo cpu = CpuInfo(), Block[] data = [],
+             OpInfo info = OpInfo(), string msg = "")
+    {
+        setup(opcode, cpu, data, info, msg, &next);
+    }
+}
+
+
+
+TestSetup connect(TestSetup first, TestSetup[] rest...)
+{
+    if (!(rest.empty))
+    {
+        auto x = first;
+        while (x.next !is null) x = x.next;
+        x.next = connect(rest[0], rest[1..$]);
+    }
+    return first;
+}
 
 
 /*
@@ -104,19 +224,6 @@ public:
 }
 
 
-// A block of memory with a given base address.
-struct Block
-{
-    const ushort base;
-    const(ubyte[]) data;
-
-    string toString() const
-    {
-        return format("Block(%0.4X, [%s])", base, formatMemory(data));
-    }
-}
-
-
 /*
  * Formats data as a string of 2-digit hex bytes, separated by spaces.
  *
@@ -131,57 +238,6 @@ string formatMemory(const(ubyte[]) data, size_t max = 3)
     if (data.length > max)
         ret ~= format(" (%d more bytes)", data.length - max);
     return ret;
-}
-
-
-struct OpInfo
-{
-    ushort addr;
-    ubyte data;
-    int len;
-    bool write;
-}
-
-alias void delegate(ubyte, CpuInfo, Block[], OpInfo, string, TestSetup*)
-    testsetup;
-
-class TestSetup
-{
-    testsetup setup;
-    TestSetup next;
-
-    auto static opCall(testsetup d)
-    {
-        auto obj = new TestSetup();
-        obj.setup = d;
-        return obj;
-    }
-
-    void run(ubyte opcode, CpuInfo cpu = CpuInfo(), Block[] data = [],
-             OpInfo info = OpInfo(), string msg = "")
-    {
-        setup(opcode, cpu, data, info, msg, &next);
-    }
-}
-
-TestSetup connect(TestSetup first, TestSetup[] rest...)
-{
-    if (!(rest.empty))
-    {
-        auto x = first;
-        while (x.next !is null) x = x.next;
-        x.next = connect(rest[0], rest[1..$]);
-    }
-    return first;
-}
-
-template testCallNext()
-{
-    void callNext(string newMsg = "", Block[] newData = [])
-    {
-        if (*next !is null)
-            next.run(opcode, cpu, data ~ newData, info, msg ~ newMsg);
-    }
 }
 
 
@@ -1232,8 +1288,8 @@ auto setup_op_LSR(bool isAcc)
 }
 
 
-// For ASO.
-auto setup_op_ASO()
+// For SLO.
+auto setup_op_SLO()
 {
     auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
               string msg, TestSetup* next)
@@ -1249,7 +1305,7 @@ auto setup_op_ASO()
         callNext("acc 0x20 ");
     }
     return connect(TestSetup(&setup),
-                   setup_rmw(false, "ASO ", setup_asl_data()));
+                   setup_rmw(false, "SLO ", setup_asl_data()));
 }
 
 // For RLA.
@@ -1270,8 +1326,8 @@ auto setup_op_RLA()
 }
 
 
-// For LSE.
-auto setup_op_LSE()
+// For SRE.
+auto setup_op_SRE()
 {
     auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
               string msg, TestSetup* next)
@@ -1284,7 +1340,7 @@ auto setup_op_LSE()
         callNext("acc 0xFF ");
     }
     return connect(TestSetup(&setup),
-                   setup_rmw(false, "LSE ", setup_right_data()));
+                   setup_rmw(false, "SRE ", setup_right_data()));
 }
 
 
@@ -1382,8 +1438,8 @@ auto setup_op_SBC(bool cmos)
 }
 
 
-// For INS.
-auto setup_op_INS()
+// For ISC.
+auto setup_op_ISC()
 {
     auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
               string msg, TestSetup* next)
@@ -1400,7 +1456,7 @@ auto setup_op_INS()
     }
 
     return connect(TestSetup(&setup), setup_flag(Flag.C), setup_flag(Flag.D),
-                   setup_rmw(false, "INS ", setup_inc_data()));
+                   setup_rmw(false, "ISC ", setup_inc_data()));
 }
 
 
@@ -1427,8 +1483,8 @@ auto setup_op_cmp(Reg reg)
 }
 
 
-// For DCM.
-auto setup_op_DCM()
+// For DCP.
+auto setup_op_DCP()
 {
     auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
               string msg, TestSetup* next)
@@ -1445,7 +1501,7 @@ auto setup_op_DCM()
     }
 
     return connect(TestSetup(&setup), setup_flag(Flag.C),
-                   setup_rmw(false, "DCM ", setup_dec_data()));
+                   setup_rmw(false, "DCP ", setup_dec_data()));
 }
 
 
@@ -2105,8 +2161,8 @@ auto expect_LSR(bool isAcc)
 }
 
 
-// For ASO.
-auto expect_ASO()
+// For SLO.
+auto expect_SLO()
 {
     void expect(ref Expected expected, const OpInfo info)
     {
@@ -2138,8 +2194,8 @@ auto expect_RLA()
 }
 
 
-// For LSE.
-auto expect_LSE()
+// For SRE.
+auto expect_SRE()
 {
     void expect(ref Expected expected, const OpInfo info)
     {
@@ -2306,8 +2362,8 @@ auto expect_SBC(bool cmos)
 }
 
 
-// For INS.
-auto expect_INS()
+// For ISC.
+auto expect_ISC()
 {
     void expect(ref Expected expected, const OpInfo info)
     {
@@ -2342,8 +2398,8 @@ auto expect_cmp(Reg reg)
 }
 
 
-// For DCM.
-auto expect_DCM()
+// For DCP.
+auto expect_DCP()
 {
     void expect(ref Expected expected, const OpInfo info)
     {
@@ -2510,12 +2566,12 @@ if (isCpu!T)
         get_expect([0x04, 0x44, 0x64], "NOP");
         get_expect([0x14, 0x34, 0x54, 0x74, 0xD4, 0xF4], "NOP");
         get_both([0x83, 0x87, 0x8F, 0x97], "SAX");
-        get_both([0x03, 0x07, 0x0F, 0x13, 0x17, 0x1B, 0x1F], "ASO");
+        get_both([0x03, 0x07, 0x0F, 0x13, 0x17, 0x1B, 0x1F], "SLO");
         get_both([0x23, 0x27, 0x2F, 0x33, 0x37, 0x3B, 0x3F], "RLA");
-        get_both([0x43, 0x47, 0x4F, 0x53, 0x57, 0x5B, 0x5F], "LSE");
+        get_both([0x43, 0x47, 0x4F, 0x53, 0x57, 0x5B, 0x5F], "SRE");
         get_both([0x63, 0x67, 0x6F, 0x73, 0x77, 0x7B, 0x7F], "RRA");
-        get_both([0xE3, 0xE7, 0xEF, 0xF3, 0xF7, 0xFB, 0xFF], "INS");
-        get_both([0xC3, 0xC7, 0xCF, 0xD3, 0xD7, 0xDB, 0xDF], "DCM");
+        get_both([0xE3, 0xE7, 0xEF, 0xF3, 0xF7, 0xFB, 0xFF], "ISC");
+        get_both([0xC3, 0xC7, 0xCF, 0xD3, 0xD7, 0xDB, 0xDF], "DCP");
         get_both([0xEB], "SBC", "false");
 
         // TODO: implement these opcode tests
@@ -2671,7 +2727,7 @@ if (isCpu!T)
 
     cycles = 2;
     return [Bus(Action.READ, pc)] ~
-            If!(isStrict!T)(
+            If!(strict)(
                 [Bus(Action.READ, pc+1)]);
 }
 
@@ -2688,7 +2744,7 @@ if (isCpu!T)
 
     cycles = 3;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1)]) ~
            [Bus(Action.WRITE, sp)];
 }
@@ -2707,7 +2763,7 @@ if (isCpu!T)
 
     cycles = 4;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1),
                  Bus(Action.READ, sp)]) ~
            [Bus(Action.READ, sp1)];
@@ -2728,7 +2784,7 @@ if (isCpu!T)
     cycles = 2 + decimal;
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!decimal(If!(isStrict!T)(
+           If!decimal(If!(strict)(
                 [Bus(Action.READ, pc+2)]));
 }
 
@@ -2750,7 +2806,7 @@ if (isCpu!T)
     cycles = 2 + branch + px;
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!branch(If!(isStrict!T)(
+           If!branch(If!(strict)(
                 [Bus(Action.READ, pc+2)] ~
                 If!px(
                     [Bus(Action.READ, wrongAddr)])));
@@ -2805,7 +2861,7 @@ if (isCpu!T)
     cycles = 3; // + accesses_end
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 If!(isNMOS!T)(
                     [Bus(Action.READ, op1)]) ~
                 If!(isCMOS!T)(
@@ -2861,7 +2917,7 @@ if (isCpu!T)
     cycles = 5; // + accesses_end
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 If!(isNMOS!T)(
                     [Bus(Action.READ, op1)]) ~
                 If!(isCMOS!T)(
@@ -2962,14 +3018,14 @@ if (isCpu!T)
     if (guess != right)
     {
         cycles += 1;
-        return If!(isStrict!T)(
+        return If!(strict)(
                     If!(isNMOS!T)([Bus(Action.READ, guess)]) ~
                     If!(isCMOS!T)([Bus(Action.READ, pc + opLen)])); // XXX
     }
     else if (noShortcut)
     {
         cycles += 1;
-        return If!(isStrict!T)([Bus(Action.READ, guess)]);
+        return If!(strict)([Bus(Action.READ, guess)]);
     }
     else
     {
@@ -2998,13 +3054,13 @@ if (isCpu!T)
     cycles += (rmw ? 3 : (write ? 1 : (1 + decimal)));
     return If!read(
                 [Bus(Action.READ, addr)] ~
-                If!decimal(If!(isStrict!T)(
+                If!decimal(If!(strict)(
                     [Bus(Action.READ, pc + opLen)]))) ~
            If!write(
                 [Bus(Action.WRITE, addr)]) ~
            If!rmw(
                 [Bus(Action.READ, addr)] ~
-                If!(isStrict!T)(
+                If!(strict)(
                     If!(isNMOS!T)(
                         [Bus(Action.WRITE, addr)]) ~
                     If!(isCMOS!T)(
@@ -3028,12 +3084,12 @@ if (isCpu!T)
 
     cycles = 6;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1),
                  Bus(Action.READ, sp)]) ~
            [Bus(Action.READ, sp1),
             Bus(Action.READ, sp2)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, ret)]);
 }
 
@@ -3053,7 +3109,7 @@ if (isCpu!T)
 
     cycles = 6;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1),
                  Bus(Action.READ, sp)]) ~
            [Bus(Action.READ, sp1),
@@ -3076,7 +3132,7 @@ if (isCpu!T)
 
     cycles = 7;
     return [Bus(Action.READ, pc)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+1)]) ~
            [Bus(Action.WRITE, sp),
             Bus(Action.WRITE, sp1),
@@ -3100,7 +3156,7 @@ if (isCpu!T)
     cycles = 6;
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, sp)]) ~
            [Bus(Action.WRITE, sp),
             Bus(Action.WRITE, sp1),
@@ -3139,7 +3195,7 @@ if (isCpu!T)
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1),
             Bus(Action.READ, pc+2)] ~
-           If!(isStrict!T)(If!(isCMOS!T)(
+           If!(strict)(If!(isCMOS!T)(
                 [Bus(Action.READ, pc+3)])) ~ // XXX
            [Bus(Action.READ, ial),
             Bus(Action.READ, iah)];
@@ -3169,7 +3225,7 @@ if (isCpu!T && isCMOS!T)
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1),
             Bus(Action.READ, pc+2)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+3)]) ~ // XXX
            [Bus(Action.READ, ial),
             Bus(Action.READ, iah)];
@@ -3195,7 +3251,7 @@ if (isCpu!T && isCMOS!T)
     cycles = 8;
     return [Bus(Action.READ, pc),
             Bus(Action.READ, pc+1)] ~
-           If!(isStrict!T)(
+           If!(strict)(
                 [Bus(Action.READ, pc+2),
                  Bus(Action.READ, weird),
                  Bus(Action.READ, 0xFFFF),
@@ -3333,4 +3389,60 @@ void test_opcode_timing(T)(ubyte opcode, busreport report)
     auto setup = connect(setup_mask_flags(), setup_addr, setup_test);
     auto run = connect(setup, run_timing_test!T(expected, report));
     run.run(opcode);
+}
+
+
+struct CheckOptions
+{
+    enum Addr
+    {
+       IMP, IMM, ZP, ZPX, ZPY, IZX, IZY, ABS, ABX, ABY, IND, REL,
+       ZPI, ABI, NP1, NP8, KIL
+    }
+
+    string[] opcodes;
+    ubyte[] codes6502;
+    ubyte[] codes65C02;
+    Addr[] addr;
+
+    this(string[] args)
+    {
+        getopt(args, "op", &opcodes, "addr", &addr);
+        foreach (op; opcodes)
+        {
+            if (op.startsWith("0x") || op.startsWith("0X"))
+                op = op[2..$];
+            if (isNumeric(op))
+            {
+                int code = to!int(op, 16);
+                if (code >= 0x00 && code <= 0xFF)
+                {
+                    codes6502 ~= [cast(ubyte)code];
+                    codes65C02 ~= [cast(ubyte)code];
+                }
+            }
+            else
+            {
+                foreach (code, name; OP_NAMES_6502)
+                    if (name == op) codes6502 ~= [cast(ubyte)code];
+                foreach (code, name; OP_NAMES_65C02)
+                    if (name == op) codes65C02 ~= [cast(ubyte)code];
+            }
+        }
+        foreach (a; addr)
+        {
+            foreach (code, mode; ADDR_MODES_6502)
+                if (a == mode) codes6502 ~= [cast(ubyte)code];
+            foreach (code, mode; ADDR_MODES_65C02)
+                if (a == mode) codes65C02 ~= [cast(ubyte)code];
+        }
+        if (opcodes.empty && addr.empty)
+        {
+            codes6502 = codes65C02 = new ubyte[256];
+            foreach (code; 0..256)
+            {
+                codes6502[code] = cast(ubyte)code;
+            }
+        }
+    }
 }

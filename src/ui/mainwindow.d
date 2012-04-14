@@ -54,7 +54,7 @@ class TwoappleMainWindow : MainWindow
     import gtk.Alignment;
     import peripheral.base;
 
-    System system;
+    SystemBase system;
     Label speedLabel;
     ToolItem speedItem;
 
@@ -122,7 +122,7 @@ class TwoappleMainWindow : MainWindow
         }
     }
 
-    void initSystem(System sys)
+    void initSystem(SystemBase sys)
     {
         showAll();
         system = sys;

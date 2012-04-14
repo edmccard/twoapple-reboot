@@ -16,6 +16,15 @@ Build by running `make` in the `src` directory; if the dependencies aren't insta
 make GTKD=/path/to/gtkd DERELICT=/path/to/Derelict2
 ```
 
+### Testing
+
+There are tests for the 6502/65C02 emulation:
+
+```
+cd test
+rdmd runtests.d --help
+```
+
 ### Use
 For now, see README.orig
 
