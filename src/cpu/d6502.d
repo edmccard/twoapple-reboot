@@ -102,6 +102,8 @@ if (__traits(compiles, {
     }
 
     bool keepRunning;
+    bool signalActive;
+    bool resetLow;
 
     final void run(bool continuous)
     {
@@ -115,18 +117,34 @@ if (__traits(compiles, {
         }
         do
         {
-            version(Cumulative)
-            {
-                static if (!opArray) cycles = 1;
-            }
-            else
-            {
-                clock.tick();
-            }
-            // XXX check signals, NMI/IRQ delays, etc.
+            version(Cumulative) { static if (!opArray) cycles = 1; }
+            else { clock.tick(); }
+            if (signalActive) handleSignals();
             opcode = memory.read(PC++);
             mixin(OpExecute(_chip));
         } while (keepRunning);
+    }
+
+    // TODO: irq/nmi
+    void handleSignals()
+    {
+        if (resetLow) doReset();
+        // XXX fix when more than one signal
+        signalActive = resetLow;
+    }
+
+    void doReset()
+    {
+        mixin(Tick() ~ Tick() ~
+              Peek(STACK) ~ DecSP() ~
+              Peek(STACK) ~ DecSP() ~
+              Peek(STACK) ~ DecSP());
+
+        I = true;
+        resetLow = false;
+
+        mixin(ReadWord(_PC, "RESET_VECTOR") ~
+              Done());
     }
 
     version(OpDelegates) mixin (OpMethods(_chip));
@@ -134,6 +152,7 @@ if (__traits(compiles, {
 
 
 enum ushort IRQ_VECTOR = 0xFFFE;
+enum ushort RESET_VECTOR = 0xFFFC;
 
 
 //alias Cpu!("6502", false, false) T1;

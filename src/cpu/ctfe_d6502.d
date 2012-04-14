@@ -495,7 +495,7 @@ string Nop(int mode)
     if (mode == IMP ||  mode == NP1 || mode == NP8)
         return "";
     else
-        return PreAccess() ~
+        return Tick() ~
                ReadRaw("address") ~ ";\n";
 }
 
@@ -1013,7 +1013,7 @@ string CheckShortcut(string base, string addr, string chip, int exCyc)
 
 string ReadInto(string var, string action, string addr)
 {
-    return PreAccess() ~
+    return Tick() ~
            var ~ " " ~ action ~ " " ~ ReadRaw("(" ~ addr ~ ")") ~ ";\n";
 }
 
@@ -1074,27 +1074,27 @@ string ReadWordOp(string var)
     return ReadWordOp("", var);
 }
 
-string PreAccess()
+string Tick()
 {
     return If!(cumulative)("++cycles;\n", Attr("clock") ~ ".tick();\n");
 }
 
 string Peek(string addr)
 {
-    return PreAccess() ~
+    return Tick() ~
            If!(strict)(Attr("memory") ~ ".read(" ~ addr ~");\n");
 }
 
 string Poke(string addr, string val)
 {
-    return PreAccess() ~
+    return Tick() ~
            If!(strict)(
                Attr("memory") ~ ".write(" ~ addr ~ ", " ~ val ~ ");\n");
 }
 
 string Write(string addr, string val)
 {
-    return PreAccess() ~
+    return Tick() ~
            Attr("memory") ~ ".write(" ~ addr ~ ", " ~ val ~ ");\n";
 }
 
@@ -1118,7 +1118,7 @@ string PullStatus()
 {
     return Peek(STACK) ~
            IncSP() ~
-           PreAccess() ~
+           Tick() ~
            Attr("statusFromByte") ~ "(" ~
            ReadRaw(STACK) ~ ");\n";
 }
@@ -1151,13 +1151,13 @@ string PullPC()
 
 string LoadLoByte(string type, string var, string addr)
 {
-    return PreAccess() ~
+    return Tick() ~
            Local(type, var) ~ " = " ~ ReadRaw(addr) ~ ";\n";
 }
 
 string LoadHiByte(string var, string addr)
 {
-    return PreAccess() ~
+    return Tick() ~
            var ~ " |= (" ~ ReadRaw(addr) ~ " << 8);\n";
 }
 
