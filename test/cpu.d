@@ -32,29 +32,41 @@ template isCMOS(T)
 }
 
 
-// Not used in test mode, but needed to instantiate a cpu.
-class DummyMem
+class TestIO
 {
-    ubyte read(ushort) { return 0; }
-    void write(ushort, ubyte) {}
-    static if (cumulative) { void tick(int) {} }
-    else { void tick() {} }
+    ubyte delegate(ushort) dread;
+    ubyte read(ushort addr) { return dread(addr); }
+
+    void delegate(ushort, ubyte) dwrite;
+    void write(ushort addr, ubyte val) { dwrite(addr, val); }
+
+    static if (cumulative)
+    {
+        void delegate(int) dtick;
+        void tick(int cycles) { dtick(cycles); }
+    }
+    else
+    {
+        void delegate() dtick;
+        void tick() { dtick(); }
+    }
 }
 
 
 /*
  * The type of a cpu, based on its architecture (6502 or 65C02).
  */
-template CPU(string arch, M = DummyMem, C = DummyMem)
+template CPU(string arch, M = TestIO, C = TestIO)
 {
     alias Cpu!(arch, M, C) CPU;
 }
 
 
-auto makeCpu(T)(CpuInfo info)
+auto makeCpu(T)(CpuInfo info = CpuInfo())
 if (isCpu!T)
 {
-    auto cpu = new T(null, null);
+    auto tio = new TestIO();
+    auto cpu = new T(tio, tio);
     cpu.PC = info.PC;
     cpu.S = info.SP;
     cpu.statusFromByte(info.S);
@@ -73,9 +85,9 @@ if (isCpu!T)
     else
         void tick() {}
 
-    cpu.memory.read = &mem.read;
-    cpu.memory.write = &mem.write;
-    cpu.clock.tick = &tick;
+    cpu.memory.dread = &mem.read;
+    cpu.memory.dwrite = &mem.write;
+    cpu.clock.dtick = &tick;
 }
 
 
@@ -92,7 +104,7 @@ auto recordCycles(T)(T cpu)
 if (isCpu!T)
 {
     auto cycles = new int;
-    auto wrappedTick = cpu.clock.tick;
+    auto wrappedTick = cpu.clock.dtick;
 
     static if (cumulative)
     {
@@ -110,7 +122,7 @@ if (isCpu!T)
             wrappedTick();
         }
     }
-    cpu.clock.tick = &tick;
+    cpu.clock.dtick = &tick;
 
     return constRef(cycles);
 }
@@ -148,9 +160,9 @@ if (isCpu!T)
     auto record = new Bus[actions];
     int c;
 
-    enforce(cpu.memory.read !is null && cpu.memory.write !is null);
-    auto wrappedRead = cpu.memory.read;
-    auto wrappedWrite = cpu.memory.write;
+    enforce(cpu.memory.dread !is null && cpu.memory.dwrite !is null);
+    auto wrappedRead = cpu.memory.dread;
+    auto wrappedWrite = cpu.memory.dwrite;
 
     ubyte read(ushort addr)
     {
@@ -170,8 +182,8 @@ if (isCpu!T)
         wrappedWrite(addr, val);
     }
 
-    cpu.memory.read = &read;
-    cpu.memory.write = &write;
+    cpu.memory.dread = &read;
+    cpu.memory.dwrite = &write;
 
     return record;
 }
@@ -203,8 +215,8 @@ enum Action : ushort { NONE, READ, WRITE }
 void runUntilBRK(T)(T cpu)
 if (isCpu!T)
 {
-    assert(cpu.memory.read !is null);
-    auto wrappedRead = cpu.memory.read;
+    assert(cpu.memory.dread !is null);
+    auto wrappedRead = cpu.memory.dread;
 
     ubyte read(ushort addr)
     {
@@ -212,7 +224,7 @@ if (isCpu!T)
         return wrappedRead(addr);
     }
 
-    cpu.memory.read = &read;
+    cpu.memory.dread = &read;
 
     try { cpu.run(true); } catch (StopException e) {}
 }

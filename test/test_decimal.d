@@ -224,7 +224,7 @@ version(Benchmark)
 }
 else
 {
-    auto cpu = new T(null, null);
+    auto cpu = makeCpu!T();
     setPC(cpu, 0x8000);
     connectMem(cpu, mem);
     runUntilBRK(cpu);

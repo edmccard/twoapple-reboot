@@ -54,29 +54,8 @@ if (__traits(compiles, {
     enum _isCpu = true;
     enum _chip = (chip == "6502" ? "6502" : "65C02");
 
-version(RunTest)
-{
-    struct _Mem
-    {
-        ubyte delegate(ushort addr) read;
-        void delegate(ushort addr, ubyte val) write;
-    }
-    _Mem memory;
-
-    struct _Clock
-    {
-        version(Cumulative)
-            void delegate(int cycles) tick;
-        else
-            void delegate() tick;
-    }
-    _Clock clock;
-}
-else
-{
     MEM memory;
     CLK clock;
-}
 
     ubyte A, X, Y, S;
     ushort PC;
@@ -95,12 +74,9 @@ else
 
     this(MEM memory, CLK clock)
     {
-        version(RunTest) {}
-        else
-        {
-            this.memory = memory;
-            this.clock = clock;
-        }
+        this.memory = memory;
+        this.clock = clock;
+
         version(OpDelegates) mixin(OpArrayInit());
     }
 
