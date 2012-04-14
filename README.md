@@ -21,7 +21,7 @@ make GTKD=/path/to/gtkd DERELICT=/path/to/Derelict2
 There are tests for the 6502/65C02 emulation:
 
 ```
-cd test
+cd test/d6502
 rdmd runtests.d --help
 ```
 

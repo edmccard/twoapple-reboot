@@ -134,7 +134,8 @@ void runTest(OpDefs def, Tests test, string[] args)
             writeln("With strict=", s, " cumulative=", c);
             string cmdline = defStrings[def] ~ stStrings[s] ~ cmStrings[c] ~
                              fNames[test] ~ join(args, " ");
-            system("rdmd --force -I.. -I../src -version=RunTest " ~ cmdline);
+            system("rdmd --force -I../.. -I../../src -version=RunTest " ~
+                   cmdline);
         }
     }
 }

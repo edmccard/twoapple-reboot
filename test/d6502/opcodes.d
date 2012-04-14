@@ -1,7 +1,7 @@
-module test.opcodes;
+module test.d6502.opcodes;
 
 
-import test.cpu;
+import test.d6502.cpu;
 
 
 // 2-cycle opcodes which neither read nor write.

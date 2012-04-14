@@ -1,10 +1,10 @@
-module test.base;
+module test.d6502.base;
 
 
 import std.algorithm, std.array, std.conv, std.exception, std.getopt,
        std.stdio, std.string;
 
-import test.cpu, test.opcodes;
+import test.d6502.cpu, test.d6502.opcodes;
 import cpu.data_d6502;
 
 
