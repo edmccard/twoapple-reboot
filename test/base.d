@@ -19,6 +19,115 @@ else
 
 
 /*
+ * A test is a combination of setups, an expectation, a runner, and a
+ * reporter.
+ */
+
+/*
+ * A setup function for a given opcode puts cpu, data, info, and msg
+ * into the appropriate state and then calls the next function (see
+ * testCallNext) with the modified values. To setup multiple
+ * scenarios, just call the next function multiple times.
+ *
+ * Values for cpu registers are set up using the setXXX(cpu, val)
+ * functions; see testCallNext and OpInfo for descriptions of other
+ * types of information that may need to be set up.
+ *
+ * Example:
+ *
+ *   // prepare the accumulator with a value different from expected
+ *   setA(cpu, ~0x10);
+ *   // prepare memory with LDA #$10 at address $1000
+ *   setPC(cpu, 0x1000);
+ *   callNext("LDA immediate, positive", [Block(0x1000, [0xA9, 0x10])]);
+ */
+alias void delegate(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
+                    string msg, TestSetup* next)
+    testsetup;
+
+
+/*
+ * A mixin that simplifies calling the next setup function.
+ *
+ * newMsg will be appended to the current msg and passed to the next
+ * function.
+ *
+ * To place values in memory, pass an array of Blocks as the second
+ * parameter. It will be appended to the current data.
+ */
+template testCallNext()
+{
+    void callNext(string newMsg = "", Block[] newData = [])
+    {
+        if (*next !is null)
+            next.run(opcode, cpu, data ~ newData, info, msg ~ newMsg);
+    }
+}
+
+
+/*
+ * A block of memory with a given base address.
+ *
+ * For example, `Block(0x1000, [0xA9, 0x10])`
+ */
+struct Block
+{
+    const ushort base;
+    const(ubyte[]) data;
+
+    string toString() const
+    {
+        return format("Block(%0.4X, [%s])", base, formatMemory(data));
+    }
+}
+
+
+// Information about expected opcode execution.
+struct OpInfo
+{
+    // The effective address, if any.
+    ushort addr;
+    // The data to be read or written, if any.
+    ubyte data;
+    // The length of the opcode + operands.
+    int len;
+}
+
+
+class TestSetup
+{
+    testsetup setup;
+    TestSetup next;
+
+    auto static opCall(testsetup d)
+    {
+        auto obj = new TestSetup();
+        obj.setup = d;
+        return obj;
+    }
+
+    void run(ubyte opcode, CpuInfo cpu = CpuInfo(), Block[] data = [],
+             OpInfo info = OpInfo(), string msg = "")
+    {
+        setup(opcode, cpu, data, info, msg, &next);
+    }
+}
+
+
+
+TestSetup connect(TestSetup first, TestSetup[] rest...)
+{
+    if (!(rest.empty))
+    {
+        auto x = first;
+        while (x.next !is null) x = x.next;
+        x.next = connect(rest[0], rest[1..$]);
+    }
+    return first;
+}
+
+
+/*
  * Emulates zero page, stack, and 3 additional pages of "main memory"
  * starting at a user-defined address. Accesses outside the defined
  * address space raise an exception.
@@ -115,19 +224,6 @@ public:
 }
 
 
-// A block of memory with a given base address.
-struct Block
-{
-    const ushort base;
-    const(ubyte[]) data;
-
-    string toString() const
-    {
-        return format("Block(%0.4X, [%s])", base, formatMemory(data));
-    }
-}
-
-
 /*
  * Formats data as a string of 2-digit hex bytes, separated by spaces.
  *
@@ -142,57 +238,6 @@ string formatMemory(const(ubyte[]) data, size_t max = 3)
     if (data.length > max)
         ret ~= format(" (%d more bytes)", data.length - max);
     return ret;
-}
-
-
-struct OpInfo
-{
-    ushort addr;
-    ubyte data;
-    int len;
-    bool write;
-}
-
-alias void delegate(ubyte, CpuInfo, Block[], OpInfo, string, TestSetup*)
-    testsetup;
-
-class TestSetup
-{
-    testsetup setup;
-    TestSetup next;
-
-    auto static opCall(testsetup d)
-    {
-        auto obj = new TestSetup();
-        obj.setup = d;
-        return obj;
-    }
-
-    void run(ubyte opcode, CpuInfo cpu = CpuInfo(), Block[] data = [],
-             OpInfo info = OpInfo(), string msg = "")
-    {
-        setup(opcode, cpu, data, info, msg, &next);
-    }
-}
-
-TestSetup connect(TestSetup first, TestSetup[] rest...)
-{
-    if (!(rest.empty))
-    {
-        auto x = first;
-        while (x.next !is null) x = x.next;
-        x.next = connect(rest[0], rest[1..$]);
-    }
-    return first;
-}
-
-template testCallNext()
-{
-    void callNext(string newMsg = "", Block[] newData = [])
-    {
-        if (*next !is null)
-            next.run(opcode, cpu, data ~ newData, info, msg ~ newMsg);
-    }
 }
 
 
