@@ -232,21 +232,21 @@ class TwoappleFile
 
     this(string fname)
     {
-        assert(isabs(fname) != 0);
+        assert(isAbsolute(fname) != 0);
         fileName = fname;
         fileNameZ = std.string.toStringz(fname);
     }
 
     string folder()
     {
-        return getDirName(fileName);
+        return dirName(fileName);
     }
 
     string baseName()
     {
-        string base = getName(fileName);
-        if (base is null) return getBaseName(fileName);
-        else return getBaseName(base);
+        string base = stripExtension(fileName);
+        if (base is null) return std.path.baseName(fileName);
+        else return std.path.baseName(base);
     }
 
     bool canRead()

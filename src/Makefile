@@ -1,4 +1,4 @@
-COMPILE_OPTS = -op -Jdata -I$(GTKD)/src \
+COMPILE_OPTS = -d -op -Jdata -I$(GTKD)/src \
 	-I$(GTKD)/srcgl -I$(DERELICT)/import \
 	-inline -release -O -noboundscheck \
 	-version=OpNestedSwitch

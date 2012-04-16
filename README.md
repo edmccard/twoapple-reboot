@@ -7,7 +7,7 @@ updated to work with the latest version of D on both 32- and 64-bit Linux.
 
 ### Building
 
-twoapple-reboot works with dmd 2.058; I haven't tried it with ldc/gdc.
+twoapple-reboot works with dmd 2.058/2.059; I haven't tried it with ldc/gdc.
 
 It depends on [gtkd](http://www.dsource.org/projects/gtkd) and [Derelict2](http://www.dsource.org/projects/derelict)
 
