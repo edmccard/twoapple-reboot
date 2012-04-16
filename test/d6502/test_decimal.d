@@ -1,6 +1,6 @@
 import std.stdio;
 
-import test.base, test.cpu;
+import test.d6502.base, test.d6502.cpu;
 
 
 void testDecimalMode(T)()

@@ -3,14 +3,14 @@
  * implementation, or that may be useful to any test which requires a
  * cpu (as opposed to testing the cpu itself).
  */
-module test.cpu;
+module test.d6502.cpu;
 
 
 import std.conv, std.exception, std.random, std.string, std.traits;
 
 public import cpu.d6502 : Cpu, is6502, is65C02;
 
-import test.base : strict, cumulative;
+import test.d6502.base : strict, cumulative;
 
 
 // True if T is the type of a cpu.

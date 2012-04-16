@@ -1,2 +1,0 @@
--version=Benchmark -inline -release -O -noboundscheck -I.. -I../src
-
