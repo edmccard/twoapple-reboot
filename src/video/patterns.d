@@ -222,7 +222,7 @@ class TextPatternGenerator_II : TextPatternGenerator
     // XXX XXX INIT
     void init(Timer timer)
     {
-        timer.new Counter(timer.hertz / 2, &toggleFlash);
+        timer.addCounter(timer.hertz / 2, &toggleFlash);
     }
 }
 
@@ -307,7 +307,7 @@ class TextPatternGenerator_IIe : TextPatternGenerator
     // XXX XXX INIT
     void init(Timer timer)
     {
-        timer.new Counter(32 * 262 * 65, &toggleFlash); // XXX PAL
+        timer.addCounter(32 * 262 * 65, &toggleFlash); // XXX PAL
     }
 
     void altCharsetOn()

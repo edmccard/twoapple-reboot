@@ -143,6 +143,13 @@ class TwoappleMainWindow : MainWindow
         return super.windowDelete(event, widget);
     }
 
+    uint sinceCheckpoint(uint cp)
+    {
+        uint currentLength = system.timer.primaryRemaining;
+        return ((currentLength == system.timer.primaryLength) ?
+            cp : (cp - currentLength));
+    }
+
     bool configChanged;
     bool runOnce;
     bool stayOpen;
@@ -189,9 +196,9 @@ class TwoappleMainWindow : MainWindow
 
             if (shouldRun)
             {
-                willElapse = system.checkpoint();
+                willElapse = system.timer.primaryRemaining;
                 system.execute();
-                didElapse = system.sinceCheckpoint(willElapse);
+                didElapse = sinceCheckpoint(willElapse);
                 input.processEvents();
                 // XXX do something about typeahead?
                 if (!runOnce)

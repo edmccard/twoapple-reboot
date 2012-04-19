@@ -28,12 +28,14 @@ import memory;
 import timer;
 import device.base;
 
+
 class Scanner : ScannerBase
 {
     uint page;
     bool graphicsTime, textSwitch, mixedSwitch, hiresSwitch, oldTextSwitch;
     Mode mode;
 
+    Timer timer;
     Timer.Cycle vidCycle;
     uint frameSkip, frameCount;
 
@@ -47,14 +49,23 @@ class Scanner : ScannerBase
     void init(Timer timer)
     {
         int frameLen = 262 * 65;    // XXX PAL: 312 * 65
-        vidCycle = timer.startCycle(frameLen);
+        this.timer = timer;
+        vidCycle = timer.new Cycle(frameLen);
         graphicsTime = true;
 
-        timer.new Counter(frameLen, &graphicsTimeOn);
-        timer.new DelayedCounter(frameLen, &frameComplete, frameLen - 1);
-        timer.new DelayedCounter(frameLen, &graphicsTimeOff, 160 * 65);
-        timer.new DelayedCounter(frameLen, &graphicsTimeOn, 192 * 65);
-        timer.new DelayedCounter(frameLen, &graphicsTimeOff, 224 * 65);
+        timer.addCounter(frameLen, &graphicsTimeOn);
+        timer.addCounter(frameLen - 1,
+            (){frameComplete();
+               timer.addCounter(frameLen, &frameComplete); return false;});
+        timer.addCounter(160 * 65,
+            (){graphicsTimeOff();
+               timer.addCounter(frameLen, &graphicsTimeOff); return false;});
+        timer.addCounter(192 * 65,
+            (){graphicsTimeOn();
+               timer.addCounter(frameLen, &graphicsTimeOn); return false;});
+        timer.addCounter(224 * 65,
+            (){graphicsTimeOff();
+               timer.addCounter(frameLen, &graphicsTimeOff); return false;});
     }
 
     void forceFrame()
@@ -199,12 +210,12 @@ class Scanner : ScannerBase
 
     uint currentLine()
     {
-        return vidCycle.currentVal() / 65;
+        return vidCycle.val() / 65;
     }
 
     uint currentCol()
     {
-        return vidCycle.currentVal() % 65;
+        return vidCycle.val() % 65;
     }
 
     ubyte* getData(uint vidClock)
@@ -243,7 +254,7 @@ class Scanner_II : Scanner
 
     ubyte floatingBus(ushort addr)
     {
-        uint clock = vidCycle.currentVal();
+        uint clock = vidCycle.val();
         if (((clock % 65) < 25) && (mode != Mode.HIRES))
             return decoder.read(
               cast(ushort)(0x1400 + (page * 0x400) + scanOffset(clock, mode)));
@@ -263,7 +274,7 @@ class Scanner_IIe : Scanner
 {
     ubyte floatingBus(ushort addr)
     {
-        return displayMem[mode][page].data[scanOffset(vidCycle.currentVal(),
+        return displayMem[mode][page].data[scanOffset(vidCycle.val(),
                 mode)];
         // equivalent to getData()[0];
     }
@@ -280,7 +291,7 @@ class Scanner_IIe : Scanner
 
     bool readVBL()
     {
-        return (vidCycle.currentVal() >= (192 * 65));
+        return (vidCycle.val() >= (192 * 65));
     }
 
     ubyte readLowVBL()

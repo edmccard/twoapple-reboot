@@ -103,8 +103,8 @@ class Speaker
 
     void update()
     {
-        uint elapsedSinceToggle = cycle.currentVal() - lastToggleTick;
-        lastToggleTick = cycle.currentVal();
+        uint elapsedSinceToggle = cycle.val() - lastToggleTick;
+        lastToggleTick = cycle.val();
         elapsedSinceToggle = processExtraBuffer(elapsedSinceToggle);
 
         uint samples = elapsedSinceToggle / sampleTicks;

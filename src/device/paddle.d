@@ -96,12 +96,12 @@ class Paddles
             if (onTrigger[i] == 0) onTrigger[i] = 1;
             switchVal[i] = 0x80;
         }
-        timer.new Counter(onTrigger[0], &pdl_0_expired);
-        timer.new Counter(onTrigger[1], &pdl_1_expired);
+        timer.addCounter(onTrigger[0], &pdl_0_expired);
+        timer.addCounter(onTrigger[1], &pdl_1_expired);
         if (numPaddles > 2)
         {
-            timer.new Counter(onTrigger[2], &pdl_2_expired);
-            timer.new Counter(onTrigger[3], &pdl_3_expired);
+            timer.addCounter(onTrigger[2], &pdl_2_expired);
+            timer.addCounter(onTrigger[3], &pdl_3_expired);
         }
     }
 

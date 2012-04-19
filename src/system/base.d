@@ -40,17 +40,15 @@ import ioummu;
 class SystemBase
 {
     Video video_;
+    Timer timer;
 
     abstract void reboot();
     abstract void reset();
-    abstract uint checkpoint();
-    abstract uint sinceCheckpoint(uint cp);
     abstract void execute();
 }
 
 class System(string chip) : SystemBase
 {
-    Timer timer;
     Timer.Cycle deviceCycle;
     AddressDecoder decoder;
     SoftSwitchPage switches;
@@ -138,9 +136,9 @@ class System(string chip) : SystemBase
     void initTimer()
     {
         // XXX constants? variables?
-        timer = new Timer(10_205, 1_020_484);
+        timer = new Timer(10_205, 1_020_484, &primaryStop);
         deviceCycle =
-            timer.startCycle(timer.primaryCounter.startLength * 2);
+            timer.new Cycle(timer.primaryLength * 2);
     }
 
     void initMemory(ubyte[] romDump)
@@ -177,7 +175,7 @@ class System(string chip) : SystemBase
         resetLow = &cpu.resetLow;
 
         debug(disassemble) cpu.memoryName = &decoder.memoryReadName;
-        timer.onPrimaryStop(&primaryStop);
+//        timer.onPrimaryStop(&primaryStop);
     }
 
     void initIO(ubyte[] vidRom)
@@ -216,18 +214,6 @@ class System(string chip) : SystemBase
         peripherals.reset();
         *signalActive = true;
         *resetLow = true;
-    }
-
-    override uint checkpoint()
-    {
-        return timer.primaryCounter.currentLength;
-    }
-
-    override uint sinceCheckpoint(uint cp)
-    {
-        uint currentLength = timer.primaryCounter.currentLength;
-        return ((currentLength == timer.primaryCounter.startLength) ?
-            cp : (cp - currentLength));
     }
 
     override void execute()

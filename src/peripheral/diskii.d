@@ -70,28 +70,34 @@ ubyte[256] controllerRom = [
 class StopTimer
 {
     Timer timer;
-    Timer.Counter stopCounter;
+    bool stopCounter;
     void delegate() notifyExpired;
+    ulong t_tick;
+    size_t t_idx;
 
     void startCountdown()
     {
-        if (stopCounter is null)
-            stopCounter = timer.new Counter(1_020_484, &expire);
+        if (!stopCounter)
+        {
+            t_idx = timer.addCounter(1_020_484, &expire);
+            t_tick = timer.totalTicks;
+            stopCounter = true;
+        }
     }
 
     void stopCountdown()
     {
-        if (stopCounter !is null)
+        if (stopCounter)
         {
-            stopCounter.discard();
-            stopCounter = null;
+            timer.removeCounter(t_tick, t_idx);
+            stopCounter = false;
         }
     }
 
     bool expire()
     {
         notifyExpired();
-        stopCounter = null;
+        stopCounter = false;
         return false;
     }
 }

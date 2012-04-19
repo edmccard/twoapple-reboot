@@ -210,6 +210,8 @@ class Input
 
     void onJoystickEvent()
     {
+        import std.stdio;
+        writeln("QWERTY joyevent");
         static const float scale = 65535.0 / 2760.0;
         static const int shift = 32768;
         bool buttonDown = false;
