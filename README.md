@@ -16,6 +16,12 @@ Build by running `make` in the `src` directory; if the dependencies aren't insta
 make GTKD=/path/to/gtkd DERELICT=/path/to/Derelict2
 ```
 
+Alternatively, you can run `build.d` from the `src` directory:
+```
+cd src
+rdmd build.d --gtkd=/path/to/gtkd --derelict=/path/to/Derelict2
+```
+
 ### Testing
 
 There are tests for the 6502/65C02 emulation:
