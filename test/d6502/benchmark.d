@@ -57,9 +57,12 @@ if (isCpu!T)
 
 void main()
 {
-//    auto milliExpected = (61886766.0 / 1020484.0) * 1000;
-    auto milliExpected = (64508206.0 / 1020484.0) * 1000;
-    auto r = benchmark!(
+    auto nmosExpected = (61886766.0 / 1020484.0) * 1000;
+    auto cmosExpected = (64508206.0 / 1020484.0) * 1000;
+    auto r1 = benchmark!(
+        run_benchmark!(CPU!("6502", BreakRunner, BreakRunner)))(1);
+    writeln("NMOS: ", nmosExpected / r1[0].to!("msecs", int));
+    auto r2 = benchmark!(
         run_benchmark!(CPU!("65C02", BreakRunner, BreakRunner)))(1);
-    writeln(milliExpected / r[0].to!("msecs", int));
+    writeln("CMOS: ", cmosExpected / r2[0].to!("msecs", int));
 }
