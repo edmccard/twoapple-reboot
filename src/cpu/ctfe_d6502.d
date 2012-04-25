@@ -73,7 +73,7 @@ string OpMethods(string chip)
     foreach (op; 0..256)
     {
         ret ~= "final void opcode_" ~ Hex2(op) ~ "()\n{\n" ~
-               If!(cumulative)("int cycles = 1;\n") ~
+//               If!(cumulative)("int cycles = 1;\n") ~
                OpBody(op, chip) ~ "}\n";
     }
     return ret;
@@ -141,7 +141,7 @@ string OpBody(int op, string chip)
     final switch (opName(op, chip))
     {
         case "BRK":
-            ret ~= Break();
+            ret ~= Break(chip);
             break;
         case "RTI":
             ret ~= RetInt();
@@ -192,7 +192,7 @@ string OpBody(int op, string chip)
             ret ~= SetFlag(_C);
             break;
         case "CLI":
-            ret ~= ClearFlag(_I);
+            ret ~= ClearInt(chip);
             break;
         case "SEI":
             ret ~= SetFlag(_I);
@@ -240,10 +240,10 @@ string OpBody(int op, string chip)
             ret ~= Inc(_Y);
             break;
         case "PHP":
-            ret ~= Push(Attr("statusToByte()"));
+            ret ~= Push("statusToByte()");
             break;
         case "PLP":
-            ret ~= PullStatus();
+            ret ~= PullSReg(chip);
             break;
         case "PLA":
             ret ~= PullReg(_A);
@@ -418,13 +418,24 @@ string OpBody(int op, string chip)
 }
 
 
-string Break()
+string Break(string chip)
 {
+    bool nmos = (chip == "6502");
+    bool cmos = !nmos;
+
     return IncPC() ~
            PushPC() ~
-           Push(Attr("statusToByte()")) ~
+           Push("statusToByte()") ~
            SetFlag(_I) ~
-           ReadWord(_PC, "IRQ_VECTOR");
+           If!(cmos)(ClearFlag(_D)) ~
+           "ushort ivec = IRQ_VECTOR;\n" ~
+           If!(nmos)(
+               "if (signals.nmiLow)\n{\n" ~
+                   "signals.nmiLow = false;\n" ~
+                   "signals.updateSignals();\n" ~
+                   "ivec = NMI_VECTOR;\n" ~
+               "}\n") ~
+           ReadWord(_PC, "ivec");
 }
 
 
@@ -1010,6 +1021,19 @@ string CheckShortcut(string base, string addr, string chip, int exCyc)
            If!(exCyc)("else\n{\n" ~ Peek("address") ~ "}\n");
 }
 
+string CheckBranchShortcut(string base, string addr, string chip, int exCyc)
+{
+    bool nmos = (chip == "6502");
+
+    return "ushort guess = (" ~ base ~ " & 0xFF00) | cast(ubyte)" ~ addr ~ ";\n" ~
+           "if (guess != " ~ addr ~ ")\n{\n" ~
+               If!(nmos)(Peek("guess"),
+                         Peek(_PC)) ~
+           "}\nelse\n{\n" ~
+               If!(nmos)("idelay = ndelay = true;\n") ~
+           "}\n";
+}
+
 
 string ReadInto(string var, string action, string addr)
 {
@@ -1114,13 +1138,21 @@ string DecSP()
     return "--" ~ _S ~ ";\n";
 }
 
+string PullSReg(string chip)
+{
+    bool nmos = (chip == "6502");
+
+    return If!(nmos)("idelay = " ~ _I ~ ";\n") ~
+           PullStatus() ~
+           If!(nmos)("idelay = idelay & !" ~ _I ~ ";\n");
+}
+
 string PullStatus()
 {
     return Peek(STACK) ~
            IncSP() ~
            Tick() ~
-           Attr("statusFromByte") ~ "(" ~
-           ReadRaw(STACK) ~ ");\n";
+           "statusFromByte(" ~ ReadRaw(STACK) ~ ");\n";
 }
 
 string PullInto(string var)
@@ -1169,6 +1201,14 @@ string SetFlag(string flag)
 string ClearFlag(string flag)
 {
     return flag ~ " = false;\n";
+}
+
+string ClearInt(string chip)
+{
+    bool nmos = (chip == "6502");
+
+    return If!(nmos)("idelay = " ~ _I ~ ";\n") ~
+           _I ~ " = false;\n";
 }
 
 string UpdateFlag(string flag, string val)

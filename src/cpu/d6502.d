@@ -40,6 +40,44 @@ template is65C02(T)
 }
 
 
+final class Signals
+{
+private:
+    bool active;
+    bool resetLow, nmiLow, irqLow;
+
+    final void updateSignals()
+    {
+        active = resetLow || nmiLow || irqLow;
+    }
+
+public:
+    final void triggerReset()
+    {
+        resetLow = true;
+        updateSignals();
+    }
+
+    final void triggerNMI()
+    {
+        nmiLow = true;
+        updateSignals();
+    }
+
+    final void assertIRQ()
+    {
+        irqLow = true;
+        updateSignals();
+    }
+
+    final void deassertIRQ()
+    {
+        irqLow = false;
+        updateSignals();
+    }
+}
+
+
 final class Cpu(string chip, MEM, CLK)
 if (__traits(compiles, {
     MEM m; ubyte val; ushort addr;
@@ -64,10 +102,20 @@ if (__traits(compiles, {
     ubyte N, Z;
     bool V, D, I, C;
 
+    bool keepRunning;
+    Signals signals;
+
+    static if (_chip == "6502")
+    {
+        // To handle NMI/IRQ delay after 3-cycle branch, and after CLI/PLP.
+        private bool ndelay, idelay, delay_handled;
+    }
+
+    version(Cumulative) { private int cycles; }
+
     version(OpDelegates)
     {
         mixin(OpArrayDef());
-        version(Cumulative) { int cycles; }
         ushort address, base;
         ubyte data;
     }
@@ -76,6 +124,7 @@ if (__traits(compiles, {
     {
         this.memory = memory;
         this.clock = clock;
+        signals = new Signals();
 
         version(OpDelegates) mixin(OpArrayInit());
     }
@@ -101,25 +150,22 @@ if (__traits(compiles, {
                (N & 0x80);
     }
 
-    bool keepRunning;
-    bool signalActive;
-    bool resetLow;
-
     final void run(bool continuous)
     {
         keepRunning = continuous;
         ubyte opcode;
         static if (!opArray)
         {
-            version(Cumulative) { int cycles; }
             ushort address, base;
             ubyte data;
         }
         do
         {
-            version(Cumulative) { static if (!opArray) cycles = 1; }
+            version(Cumulative) { cycles = 0; }
+            if (signals.active) handleSignals();
+            static if (_chip == "6502") { idelay = ndelay = false; }
+            version(Cumulative) { cycles = 1; }
             else { clock.tick(); }
-            if (signalActive) handleSignals();
             opcode = memory.read(PC++);
             mixin(OpExecute(_chip));
         } while (keepRunning);
@@ -128,22 +174,67 @@ if (__traits(compiles, {
     // TODO: irq/nmi
     void handleSignals()
     {
-        if (resetLow) doReset();
-        // XXX fix when more than one signal
-        signalActive = resetLow;
+        if (signals.resetLow) { doReset(); return; }
+
+        static if (_chip == "6502")
+        {
+            // Handle the case where NMI/IRQ are delayed for one
+            // instruction after a 3-cycle branch opcode, a CLI, or a PLP.
+            if (!delay_handled && (ndelay || (idelay && !signals.nmiLow)))
+            {
+                delay_handled = true;
+                return;
+            }
+        }
+        if (signals.nmiLow)
+            doNMI();
+        else if (signals.irqLow && !I)
+            doIRQ();
+
+        static if (_chip == "6502") { delay_handled = false; }
     }
 
     void doReset()
     {
-        mixin(Tick() ~ Tick() ~
+        mixin(Peek("PC") ~ Peek("PC") ~
               Peek(STACK) ~ DecSP() ~
               Peek(STACK) ~ DecSP() ~
               Peek(STACK) ~ DecSP());
 
         I = true;
-        resetLow = false;
+        static if (_chip == "65C02") { D = false; }
+        signals.resetLow = false;
+        signals.updateSignals();
 
         mixin(ReadWord(_PC, "RESET_VECTOR") ~
+              Done());
+    }
+
+    void doNMI()
+    {
+        mixin(Peek("PC") ~ Peek("PC") ~
+              PushPC() ~
+              Push("statusToByte() & ~0x10"));
+
+        I = true;
+        static if (_chip == "65C02") { D = false; }
+        signals.nmiLow = false;
+        signals.updateSignals();
+
+        mixin(ReadWord(_PC, "NMI_VECTOR") ~
+              Done());
+    }
+
+    void doIRQ()
+    {
+        mixin(Peek("PC") ~ Peek("PC") ~
+              PushPC() ~
+              Push("statusToByte() & ~0x10"));
+
+        I = true;
+        static if (_chip == "65C02") { D = false; }
+
+        mixin(ReadWord(_PC, "IRQ_VECTOR") ~
               Done());
     }
 
@@ -153,6 +244,7 @@ if (__traits(compiles, {
 
 enum ushort IRQ_VECTOR = 0xFFFE;
 enum ushort RESET_VECTOR = 0xFFFC;
+enum ushort NMI_VECTOR = 0xFFFA;
 
 
 //alias Cpu!("6502", false, false) T1;

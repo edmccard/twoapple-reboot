@@ -971,7 +971,7 @@ auto setup_op_TSB()
 
 
 // For BRK.
-auto setup_op_BRK()
+auto setup_op_BRK(T)()
 {
     auto setup(ubyte opcode, CpuInfo cpu, Block[] data, OpInfo info,
               string msg, TestSetup* next)
@@ -1953,7 +1953,7 @@ auto expect_TSB()
 }
 
 // For BRK.
-auto expect_BRK()
+auto expect_BRK(T)()
 {
     void expect(ref Expected expected, const OpInfo info)
     {
@@ -1968,6 +1968,7 @@ auto expect_BRK()
             decSP(cpu);
             setPC(cpu, info.addr);
             setFlag(cpu, Flag.I);
+            if (isCMOS!T) clearFlag(cpu, Flag.D);
         }
     }
     return &expect;
@@ -2523,7 +2524,7 @@ if (isCpu!T)
     get_both([0x84, 0x8C, 0x94], "store", "Reg.Y");
     get_expect(BRANCH_OPS!T, "branch");
     get_both([0x24, 0x2C], "BIT");
-    get_both([0x00], "BRK");
+    get_both([0x00], "BRK!T");
     get_both([0x40], "RTI");
     get_both([0x60], "RTS");
     get_test([0x6C], "JMP_ind", "isCMOS!T");
@@ -2688,7 +2689,7 @@ auto report_debug()
                 writeln(format("       | %s", formatMemory(h.b, 8)));
             }
         }
-        if (badCpu || badMem) throw new Exception("BAD");
+        if (badCpu || badMem) throw new TestException("func");
     }
     return &report;
 }

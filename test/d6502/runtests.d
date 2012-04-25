@@ -17,7 +17,8 @@ enum Tests
     Func = 1,
     Bus = 2,
     Dec = 4,
-    All = 7
+    Int = 8,
+    All = 15
 }
 
 string[OpDefs] defStrings;
@@ -28,7 +29,8 @@ static this()
     fNames = [
         Tests.Func:" test_func.d ",
         Tests.Bus:" test_bus.d ",
-        Tests.Dec:" test_decimal.d "
+        Tests.Dec:" test_decimal.d ",
+        Tests.Int:" test_signal.d "
     ];
 }
 
@@ -80,8 +82,8 @@ void main(string[] args)
     {
         writeln(
 `Options:
-   --test=type   Func, Bus, Dec, or All
-   --def=style   Delegates, Switch, or NestedSwitch
+   --test=type   Func, Bus, Dec, Int, or All
+   --def=style   Delegates, Switch, NestedSwitch, or All
    --op=num      test opcode 'num' (num is hex)
    --op=name     test all opcodes named 'name'
    --addr=mode   test all opcodes with addressing mode 'mode'

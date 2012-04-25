@@ -55,7 +55,8 @@ class System(string chip) : SystemBase
 
     Cpu!(chip, AddressDecoder, Timer) cpu;
     // XXX
-    bool* cpuRun, signalActive, resetLow;
+    bool* cpuRun;
+    Signals signals;
 
     IOMem ioMem;
     Peripherals peripherals;
@@ -171,8 +172,7 @@ class System(string chip) : SystemBase
         cpu = new Cpu!(chip, AddressDecoder, Timer)(decoder, timer);
         // XXX
         cpuRun = &cpu.keepRunning;
-        signalActive = &cpu.signalActive;
-        resetLow = &cpu.resetLow;
+        signals = cpu.signals;
 
         debug(disassemble) cpu.memoryName = &decoder.memoryReadName;
 //        timer.onPrimaryStop(&primaryStop);
@@ -212,8 +212,7 @@ class System(string chip) : SystemBase
         }
 
         peripherals.reset();
-        *signalActive = true;
-        *resetLow = true;
+        signals.triggerReset();
     }
 
     override void execute()
