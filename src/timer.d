@@ -137,7 +137,7 @@ public:
                 {
                     deleteCounter(idx, prev);
                 }
-                prev = idx;
+                if (counters[idx].active) prev = idx;
                 idx = counters[idx].next;
             }
             start = curr = minCurr;
