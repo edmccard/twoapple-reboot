@@ -13,7 +13,7 @@ final class BreakRunner
         this.mem = &mem;
     }
 
-    final ubyte read(ushort addr)
+    final ubyte opIndex(ushort addr)
     {
         if (addr == 0xfffe)
         {
@@ -27,9 +27,10 @@ final class BreakRunner
         else return mem.read(addr);
     }
 
-    final void write(ushort addr, ubyte val)
+    final ubyte opIndexAssign(ubyte val, ushort addr)
     {
         mem.write(addr, val);
+        return val;
     }
 
     static if (cumulative) { final void tick(int) {} }

@@ -35,10 +35,7 @@ template isCMOS(T)
 class TestIO
 {
     ubyte delegate(ushort) dread;
-    ubyte read(ushort addr) { return dread(addr); }
-
     void delegate(ushort, ubyte) dwrite;
-    void write(ushort addr, ubyte val) { dwrite(addr, val); }
 
     static if (cumulative)
     {
@@ -49,6 +46,19 @@ class TestIO
     {
         void delegate() dtick;
         void tick() { dtick(); }
+    }
+
+    ubyte opIndex(ushort i1) const
+    {
+        auto addr = cast(ushort)i1;
+        return dread(addr);
+    }
+
+    ubyte opIndexAssign(ubyte val, ushort i1)
+    {
+        auto addr = cast(ushort)i1;
+        dwrite(addr, val);
+        return val;
     }
 }
 

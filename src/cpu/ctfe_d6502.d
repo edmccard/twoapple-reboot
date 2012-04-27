@@ -1053,7 +1053,7 @@ string ReadOp(string var)
 
 string ReadRaw(string addr)
 {
-    return Attr("memory") ~ ".read(" ~ addr ~")";
+    return Attr("memory") ~ "[" ~ addr ~"]";
 }
 
 string ReadWordBasic(string type, string var, string addr1, string addr2)
@@ -1106,20 +1106,20 @@ string Tick()
 string Peek(string addr)
 {
     return Tick() ~
-           If!(strict)(Attr("memory") ~ ".read(" ~ addr ~");\n");
+           If!(strict)(Attr("memory") ~ "[" ~ addr ~ "];\n");
 }
 
 string Poke(string addr, string val)
 {
     return Tick() ~
            If!(strict)(
-               Attr("memory") ~ ".write(" ~ addr ~ ", " ~ val ~ ");\n");
+               Attr("memory") ~ "[" ~ addr ~ "] = " ~ val ~ ";\n");
 }
 
 string Write(string addr, string val)
 {
     return Tick() ~
-           Attr("memory") ~ ".write(" ~ addr ~ ", " ~ val ~ ");\n";
+           Attr("memory") ~ "[" ~ addr ~ "] = " ~ val ~ ";\n";
 }
 
 string IncPC()

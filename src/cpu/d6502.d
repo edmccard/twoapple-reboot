@@ -81,8 +81,8 @@ public:
 final class Cpu(string chip, MEM, CLK)
 if (__traits(compiles, {
     MEM m; ubyte val; ushort addr;
-    val = m.read(addr);
-    m.write(addr, val);
+    val = m[addr];
+    m[addr] = val;
     CLK c; int cycles;
     version(Cumulative) c.tick(cycles);
     else c.tick();
@@ -166,7 +166,7 @@ if (__traits(compiles, {
             static if (_chip == "6502") { idelay = ndelay = false; }
             version(Cumulative) { cycles = 1; }
             else { clock.tick(); }
-            opcode = memory.read(PC++);
+            opcode = memory[PC++];
             mixin(OpExecute(_chip));
         } while (keepRunning);
     }
