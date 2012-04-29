@@ -253,14 +253,15 @@ class AddressDecoder
         writePages[0xC0] = &switches.write;
     }
 
-    ubyte read(ushort addr)
+    ubyte opIndex(ushort addr)
     {
         return readPages[addr >> 8](addr);
     }
 
-    void write(ushort addr, ubyte val)
+    ubyte opIndexAssign(ubyte val, ushort addr)
     {
         writePages[addr >> 8](addr, val);
+        return val;
     }
 
     // XXX address read only/write only code

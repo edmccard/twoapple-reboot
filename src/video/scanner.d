@@ -256,8 +256,8 @@ class Scanner_II : Scanner
     {
         uint clock = vidCycle.val();
         if (((clock % 65) < 25) && (mode != Mode.HIRES))
-            return decoder.read(
-              cast(ushort)(0x1400 + (page * 0x400) + scanOffset(clock, mode)));
+            return decoder[
+              cast(ushort)(0x1400 + (page * 0x400) + scanOffset(clock, mode))];
         else
             return displayMem[mode][page].data[scanOffset(clock, mode)];
     }
