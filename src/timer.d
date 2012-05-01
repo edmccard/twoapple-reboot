@@ -149,6 +149,19 @@ public:
     {
         if (nextFree == counters.length)
         {
+            size_t idx = head;
+            size_t prev = -1;
+            while (idx != -1)
+            {
+                if (!counters[idx].active)
+                    deleteCounter(idx, prev);
+                else
+                    prev = idx;
+                idx = counters[idx].next;
+            }
+        }
+        if (nextFree == counters.length)
+        {
             counters.length += 20;
             setNextFree();
         }
